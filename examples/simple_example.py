@@ -6,14 +6,17 @@ from bandpy.env import BernoulliKBandit
 from bandpy.agents import FollowTheLeader
 
 
+plt.rcParams['text.usetex'] = True
+
+
 ###############################################################################
 # Globals
 # simulation parameters
 n_try = 50
 
 # env parameters
-horizon = 300
-p = [0.1, 0.5, 0.3]
+horizon = 200
+p = [0.1, 0.6, 0.3]
 seed = None
 K = len(p)
 
@@ -37,15 +40,19 @@ for i in range(1, n_try + 1):
 
 ###############################################################################
 # Plotting
-plt.figure(figsize=(6, 4))
+_, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
+
 mean_regrets = np.mean(regrets, axis=0)
 std_regrets = np.std(regrets, axis=0)
-plt.plot(np.arange(horizon), mean_regrets, lw=1.5)
-plt.fill_between(np.arange(horizon),
-                 mean_regrets + std_regrets / 2.,
-                 mean_regrets - std_regrets / 2.,
-                 alpha=0.1)
+
+ax.plot(np.arange(horizon), mean_regrets, lw=2.0)
+ax.fill_between(np.arange(horizon),
+                mean_regrets + std_regrets / 2.0,
+                mean_regrets - std_regrets / 2.0,
+                alpha=0.25)
+ax.set_xlabel(r'$n$', fontsize=17)
+ax.set_ylabel(r'$R_n$', fontsize=17, rotation=0)
+ax.yaxis.set_label_coords(-0.1, 0.5)
+
 plt.grid()
-plt.xlabel("n", fontsize=12)
-plt.ylabel("Regret", fontsize=12)
-plt.savefig("/mnt/c/Users/hwx1143141/Desktop/regret_evolution.png")
+plt.savefig("/mnt/c/Users/hwx1143141/Desktop/regret_evolution.png", dpi=200)
