@@ -7,18 +7,20 @@ from .utils import check_random_state
 
 class BernoulliKBandit:
     """BernoulliKBandit class to define a Bernoulli bandit with K arms.
-    
+
     Parameters
     ----------
-    p : array-like of float, each float is the Bernoulli probability corresponding to the k-th arm.
+    p : array-like of float, each float is the Bernoulli probability
+        corresponding to the k-th arm.
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
 
-    def __init__(self, p, seed=None):
+    def __init__(self, p, horizon, seed=None):
         """Init."""
 
-        msg = "BernoulliKBandit should be instanciated with a 1 dim array-like of K probabilities."
+        msg = ("BernoulliKBandit should be instanciated with a 1 dim "
+               "array-like of K probabilities.")
 
         if isinstance(p, collections.Sequence):
             self.p = np.array(p, dtype=float)
@@ -31,6 +33,8 @@ class BernoulliKBandit:
         else:
             raise ValueError(msg)
 
+        self.horizon = horizon
+
         self.random_state = check_random_state(seed)
 
         self.best_arm = np.argmax(self.p)
@@ -39,12 +43,21 @@ class BernoulliKBandit:
         self.n = 0
         self.total_reward = 0.0
 
-    def pull(self, k):
+    def step(self, k):
         """Pull the k-th arm."""
         reward = self.random_state.binomial(1, self.p[k])
         self.n += 1
         self.total_reward += reward
-        return reward
+
+        observation = {'arm_pulled': k, 'reward': reward}
+        done = True
+        info = {'n_arms': self.K}
+
+        done = False
+        if self.horizon <= self.n:
+            done = True
+
+        return observation, reward, done, info
 
     def regret(self):
         """Regret function."""
