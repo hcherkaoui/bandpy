@@ -82,11 +82,11 @@ def _import_module_with_version_check(module_name, minimum_version,
     return module
 
 
-def _check_module_dependencies(is_bandpy_simulator_installing=False):
+def _check_module_dependencies(is_bandpy_installing=False):
     """Throw an exception if Bandpy dependencies are not installed.
     Parameters
     ----------
-    is_bandpy_simulator_installing: boolean
+    is_bandpy_installing: boolean
         if True, only error on missing packages that cannot be auto-installed.
         if False, error on any missing package.
     Throws
@@ -95,7 +95,7 @@ def _check_module_dependencies(is_bandpy_simulator_installing=False):
     """
 
     for (module_name, module_metadata) in REQUIRED_MODULE_METADATA:
-        if not (is_bandpy_simulator_installing and
+        if not (is_bandpy_installing and
            not module_metadata['required_at_installation']):
             # Skip check only when installing and it's a module that
             # will be auto-installed.
