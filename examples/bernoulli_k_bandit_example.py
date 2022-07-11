@@ -15,7 +15,6 @@ import numpy as np
 from bandpy import run_simulation, agents, env
 
 
-plt.rcParams['text.usetex'] = True
 DEFAULT_RESULT_DIR = '/mnt/c/Users/hwx1143141/Desktop/'
 
 
@@ -84,8 +83,8 @@ if __name__ == '__main__':
                         alpha=0.3)
 
     fig.legend(ncol=2, loc='upper center', fontsize=12)
-    ax.set_xlabel(r'$t$', fontsize=18)
-    ax.set_ylabel(r'$R_t$', fontsize=18, rotation=0)
+    ax.set_xlabel('t', fontsize=18)
+    ax.set_ylabel('R_t', fontsize=18, rotation=0)
     ax.yaxis.set_label_coords(-0.1, 0.5)
 
     plt.grid()
