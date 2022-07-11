@@ -1,0 +1,16 @@
+[run]
+branch = True
+parallel = True
+source =
+    bandpy
+omit =
+    setup.py
+    info.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == '__main__':
+    except Exception
+ignore_errors = True

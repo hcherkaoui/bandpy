@@ -1,5 +1,6 @@
-""" Define all the bandit environments available in bandpy.
-"""
+""" Define all check utility functions in Bandpy. """
+# Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
+
 import numpy as np
 
 

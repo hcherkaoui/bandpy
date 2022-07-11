@@ -1,16 +1,21 @@
 # ignore compiled files of any sort
 *.pyc
 *.c
-*.so
 *~
 .#*
 *.swp
 *.swo
 *.profile
 
-# ignore specific usual dir
+# ignore coverage report file
+.coverage
+coverage.xml
+
+# ignore specific usual dirs
+results_*
 dist/
 docs/
+bandpy.egg-info/
 .DS_Store/
 .cache/
 __cache__/
@@ -24,12 +29,16 @@ _autosummary/
 generated/
 modules/
 
-# ignore example results
+# ignore example result files
 *.png
 *.pdf
 
-# ignore all type of zipped files
+# ignore all type of archived/zipped files
 *.zip
 *.nt.bz2
 *.tar.gz
 *.tgz
+*.dump
+*.h5
+*.pkl
+*.xml
