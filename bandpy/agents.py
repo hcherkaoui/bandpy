@@ -2,10 +2,10 @@
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import numpy as np
-from .utils import check_random_state
+from .base import Agent
 
 
-class FollowTheLeader:
+class FollowTheLeader(Agent):
     """FollowTheLeader class to define a simple agent that choose the best arm
     observed so far.
 
@@ -18,33 +18,29 @@ class FollowTheLeader:
 
     def __init__(self, K, seed=None):
         """Init."""
-        self.K = K
+        super().__init__(K=K, seed=seed)
         self.reward_per_arms = dict([(k, [0.0]) for k in range(self.K)])
-        self.random_state = check_random_state(seed)
 
-    def act(self, kwargs):
+    def act(self, observation, reward):
         """Choose the best arm observed so far."""
 
-        observation = kwargs['observation']
-        reward = kwargs['last_reward']
+        # fetch and rename main variables
+        last_k = observation['last_arm_pulled']
+        last_r = reward
 
-        self.reward_per_arms[observation['arm_pulled']].append(reward)
+        # update main statistic variables
+        self.reward_per_arms[last_k].append(last_r)
 
+        # arm selection
         mean_reward_per_arms = [np.mean(self.reward_per_arms[k])
                                 for k in range(self.K)]
         filter = np.max(mean_reward_per_arms) == mean_reward_per_arms
         best_arms = np.arange(self.K)[filter]
 
-        if len(best_arms) > 1:  # tie case
-            idx = self.random_state.randint(0, len(best_arms))
-            k = best_arms[idx]
-        else:
-            k = int(best_arms)
-
-        return k
+        return self.randomly_select_one_arm(best_arms)
 
 
-class Uniform:
+class Uniform(Agent):
     """ Uniform class to define a simple agent that choose the arm
     randomly.
 
@@ -54,18 +50,16 @@ class Uniform:
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
-
     def __init__(self, K, seed=None):
         """Init."""
-        self.K = K
-        self.random_state = check_random_state(seed)
+        super().__init__(K=K, seed=seed)
 
-    def act(self, kwargs):
+    def act(self, observation, reward):
         """Choose the best arm observed so far."""
-        return self.random_state.randint(self.K)
+        return self.randomly_select_arm()
 
 
-class EC:
+class EC(Agent):
     """ Explore-and-Commit class to define a simple agent that randomly explore
     the arms and commit to the best estimated arm.
 
@@ -80,41 +74,40 @@ class EC:
 
     def __init__(self, K, T, m=0.5, seed=None):
         """Init."""
+
+        super().__init__(K=K, seed=seed)
+
         if not ((m > 0.0) and (m < 1.0)):
             raise ValueError(f"'m' (exploring time-ratio) should belong to, "
                              f"]0.0, 1.0[, got {m}")
 
-        self.K = K
         self.Te = int(m * T)
         self.reward_per_arms = dict([(k, [0.0]) for k in range(self.K)])
-        self.random_state = check_random_state(seed)
 
-    def act(self, kwargs):
+    def act(self, observation, reward):
         """Choose the best arm observed so far."""
 
-        observation = kwargs['observation']
-        reward = kwargs['last_reward']
+        # fetch and rename main variables
+        t = observation['t']
+        last_k = observation['last_arm_pulled']
+        last_r = reward
 
-        if observation['t'] <= self.Te:
-            self.reward_per_arms[observation['arm_pulled']].append(reward)
-            k = observation['t'] % self.K
-
+        # arm selection
+        if t <= self.Te:
+            self.reward_per_arms[last_k].append(last_r)
+            k = t % self.K
         else:
             mean_reward_per_arms = [np.mean(self.reward_per_arms[k])
                                     for k in range(self.K)]
             filter = np.max(mean_reward_per_arms) == mean_reward_per_arms
             best_arms = np.arange(self.K)[filter]
 
-            if len(best_arms) > 1:  # tie case
-                idx = self.random_state.randint(0, len(best_arms))
-                k = best_arms[idx]
-            else:
-                k = int(best_arms)
+            k = self.randomly_select_one_arm(best_arms)
 
         return k
 
 
-class UCB:
+class UCB(Agent):
     """ Upper confidence bound class to define the UCB algorithm.
 
     Parameters
@@ -127,24 +120,29 @@ class UCB:
 
     def __init__(self, K, delta, seed=None):
         """Init."""
+
+        super().__init__(K=K, seed=seed)
+
         if not ((delta > 0.0) and (delta < 1.0)):
             raise ValueError(f"'delta' should belong to, "
                              f"]0.0, 1.0[, got {delta}")
 
-        self.K = K
         self.delta = delta
         self.n_pulls_per_arms = dict([(k, 0) for k in range(self.K)])
         self.reward_per_arms = dict([(k, [0.0]) for k in range(self.K)])
-        self.random_state = check_random_state(seed)
 
-    def act(self, kwargs):
+    def act(self, observation, reward):
         """Choose the best arm observed so far."""
-        observation = kwargs['observation']
-        reward = kwargs['last_reward']
 
-        self.n_pulls_per_arms[observation['arm_pulled']] += 1
-        self.reward_per_arms[observation['arm_pulled']].append(reward)
+        # fetch and rename main variables
+        last_k = observation['last_arm_pulled']
+        last_r = reward
 
+        # update main statistic variables
+        self.n_pulls_per_arms[last_k] += 1
+        self.reward_per_arms[last_k].append(last_r)
+
+        # arm selection
         u = []
         for k in range(self.K):
             T_k = self.n_pulls_per_arms[k]
@@ -153,14 +151,8 @@ class UCB:
                 u.append(np.inf)
             else:
                 u.append(mu_k + np.sqrt(2 * np.log(1.0/self.delta) / T_k))
-
         filter = np.max(u) == u
         best_arms = np.arange(self.K)[filter]
-
-        if len(best_arms) > 1:  # tie case
-            idx = self.random_state.randint(0, len(best_arms))
-            k = best_arms[idx]
-        else:
-            k = int(best_arms)
+        k = self.randomly_select_one_arm(best_arms)
 
         return k

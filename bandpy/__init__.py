@@ -4,38 +4,74 @@
 import numpy as np
 
 
-def run_simulation(n_trials, T, env_cls, env_kwargs, l_agent_names,
-                   l_agent_cls, l_agent_kwargs):
-    """ Run 'n_trials' time each agent in 'l_agent_cls' with 'env_cls'
-    environment with an horizon 'T'.
+def run_simulation(env_names, envs, controller_names, controllers, n_trials=10,
+                   T=500, verbose=False):
+    """ Run, for each env in 'envs', 'n_trials' time each controller in
+    'controllers' with an horizon 'T'.
+
+    Parameters
+    ----------
+    env_names : str,
+
+    envs : env-class,
+
+    controller_names : str,
+
+    controllers : controller-class,
+
+    n_trials : int, default=10
+
+    T : int, default=500
+
+    verbose : bool, default=False
+
+
+    Return
+    ------
+    regrets :
     """
     all_regrets = {}
-    for agent_name, agent_cls, agent_kwargs in zip(l_agent_names, l_agent_cls,
-                                                   l_agent_kwargs):
 
-        regrets = np.zeros((n_trials, T), dtype=float)
-        for i in range(1, n_trials + 1):
-            env = env_cls(**env_kwargs)
-            agent = agent_cls(**agent_kwargs)
+    for env_name, env in zip(env_names, envs):
 
-            # init. by pulling arm #0
-            observation, reward, _, _ = env.step(0)
+        regrets = {}
 
-            while True:
-                # agent/env iteration
-                observation, reward, done, _ = env.step(
-                                            agent.act(
-                                                {'observation': observation,
-                                                 'last_reward': reward}
-                                                    )
-                                                 )
+        for controller_name, controller in zip(controller_names, controllers):
 
-                # regret computation
-                regrets[i - 1, env.t - 1] = env.regret()
+            if verbose:
+                print(f"[run_simulation] running '{controller_name}' on "
+                      f"'{env_name}'.")
 
-                if done:
-                    break
+            trial_regrets = np.zeros((n_trials, T), dtype=float)
 
-        all_regrets[agent_name] = regrets
+            for i in range(1, n_trials + 1):
+
+                # reset environment
+                env.reset()
+
+                # trigger first observations
+                actions = controller.init()
+                observations, rewards, _, _ = env.step(actions)
+
+                while True:
+
+                    # controller/environment interaction
+                    actions = controller.act(observations, rewards)
+                    observations, rewards, done, _ = env.step(actions)
+
+                    # regret storing
+                    mean_trial_regret = np.mean(list(env.regret().values()))
+                    trial_regrets[i - 1, env.t - 1] = mean_trial_regret
+
+                    # simulation early-stopping
+                    if done:
+                        break
+
+            regrets[controller_name] = trial_regrets
+
+        all_regrets[env_name] = regrets
+
+    if verbose:
+        print("[run_simulation] all runs done.")
 
     return all_regrets

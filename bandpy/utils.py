@@ -22,3 +22,20 @@ def check_random_state(seed):
         return seed
     raise ValueError(f"{seed} cannot be used to seed a "
                      f"numpy.random.RandomState instance")
+
+
+def check_actions(actions):
+    """ Check if the 'actions' are properly formatted."""
+    if not isinstance(actions, dict):
+        raise ValueError(f"'actions' should be a dict, got {type(actions)}")
+
+    for agent_name, action in actions.items():
+        if not isinstance(agent_name, str):
+            raise ValueError(f"Agent name should be str, got "
+                             f"{type(agent_name)}")
+
+        if not isinstance(action, (int, np.integer)):
+            raise ValueError(f"Action for agent '{agent_name}' should be type"
+                             f" int, got {type(action)}")
+
+    return actions
