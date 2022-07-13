@@ -26,4 +26,4 @@ example:
   stage: example
   script:
     - cd examples/
-    - python bernoulli_k_bandit_example.py --fig-dirname .
+    - python benchmark.py --fig-dirname . --verbose

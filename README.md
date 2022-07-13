@@ -22,9 +22,8 @@ In order install the package, run::
 
 To validate the installation, run::
 
-    pytest  # run the unit-tests
     cd examples/
-    python bernoulli_k_bandit_example.py  # run the simple example
+    python benchmark.py --verbose  # run the simple benchmark
 
 
 Dependencies
