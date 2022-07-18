@@ -12,6 +12,7 @@
 coverage.xml
 
 # ignore specific usual dirs
+.ipynb_checkpoints/
 results_*
 dist/
 docs/
