@@ -388,7 +388,7 @@ class GreedyLinGapE(Agent):
             for x_k in self.arms:
                 x_k = x_k.reshape((self.d, 1))
                 inv_A_x_k = np.linalg.pinv(self.A + x_k.dot(x_k.T))
-                gap_ij =  x_i - x_j
+                gap_ij = x_i - x_j
                 a = np.sqrt(gap_ij.T.dot(inv_A_x_k).dot(gap_ij))
                 aa.append(float(a))
             best_arms = np.arange(self.K)[np.min(aa) == aa]

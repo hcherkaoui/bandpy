@@ -130,13 +130,12 @@ def launch_experiment(env_names, envs, controller_names, controllers,
 
             if verbose:
                 print(f"[run_simulation] running '{controller_name}' on "
-                    f"'{env_name}'.")
+                      f"'{env_name}'.")
 
-            trial_results = run_trials(
-        env=env, controller=controller,
-        enable_controller_early_stopping=enable_controller_early_stopping,
-        seeds=seeds, n_jobs=n_jobs, verbose=verbose
-                                        )
+            trial_results = run_trials(env=env, controller=controller,
+                                       enable_controller_early_stopping=enable_controller_early_stopping,  # noqa
+                                       seeds=seeds, n_jobs=n_jobs,
+                                       verbose=verbose)
 
             results[controller_name] = trial_results
 
