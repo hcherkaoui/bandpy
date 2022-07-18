@@ -12,13 +12,16 @@ class BanditEnv():
         """Init."""
         self.T = T
         self.t = 0
-        self.rng = check_random_state(seed)
+        self.seed = seed
+        self.rng = check_random_state(self.seed)
         self.S_t = dict()
 
     def reset(self, seed=np.NaN):
+        """Reset the environment (and the randomness if seed is not NaN)."""
         self.t = 0
         if not np.isnan(seed):
-            self.rng = check_random_state(seed)
+            self.seed = seed
+            self.rng = check_random_state(self.seed)
         self.S_t = dict()
 
     def step(self, actions):
@@ -28,7 +31,7 @@ class BanditEnv():
         observations, rewards = dict(), dict()
         for name_agent, k in actions.items():
 
-            r = self.compute_reward(k)
+            r = self.compute_reward(name_agent, k)
 
             self.update_agent_total_rewards(name_agent, r)
 
@@ -43,6 +46,7 @@ class BanditEnv():
         info = {'n_arms': self.K,
                 'best_arm': self.best_arm,
                 'best_reward': self.best_reward,
+                'seed': self.seed,
                 }
 
         self.t += 1
@@ -54,6 +58,7 @@ class BanditEnv():
         return observations, rewards, done, info
 
     def update_agent_total_rewards(self, name_agent, r):
+        """Update S_t = sum_{s=1}^t r_s."""
         if name_agent in self.S_t:
             self.S_t[name_agent] += r
         else:
@@ -66,8 +71,8 @@ class BanditEnv():
 
         else:
             name_agents = self.S_t.keys()
-            S_t = self.S_t.values()
-            regrets = [self.best_reward - R / self.t for R in S_t]
+            S_t = np.array(list(self.S_t.values()), dtype=float)
+            regrets = self.best_reward - S_t / self.t
             return dict(zip(name_agents, regrets))
 
 
@@ -81,7 +86,7 @@ class Controller:
         for n in range(self.N):
             self.agents[f"agent_{n}"] = agent_cls(**agent_kwargs)
 
-    def init(self):
+    def init_act(self):
         """ Make each agent pulls randomly an arm to initiliaze the simulation.
         """
         actions = dict()
