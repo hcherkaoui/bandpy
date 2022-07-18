@@ -33,6 +33,7 @@ The required dependencies to use the software are:
 
  * Matplotlib (>=3.0.0)
  * Numpy (>=1.10.0)
+ * Joblib (>=0.16.0)
 
 Dev
 ===

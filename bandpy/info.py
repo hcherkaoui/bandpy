@@ -39,6 +39,10 @@ REQUIRED_MODULE_METADATA = (
         'min_version': '1.10.0',
         'required_at_installation': True,
         'install_info': _BANDPY_INSTALL_MSG}),
+    ('joblib', {
+        'min_version': '0.16.0',
+        'required_at_installation': True,
+        'install_info': _BANDPY_INSTALL_MSG}),
 
     )
 
