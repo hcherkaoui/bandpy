@@ -1,77 +1,148 @@
 """ Bandpy. """
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
+from joblib import Parallel, delayed
 import numpy as np
 
 
-def run_simulation(env_names, envs, controller_names, controllers, n_trials=10,
-                   T=500, verbose=False):
+def run_trial(env, controller, enable_controller_early_stopping=False,
+              seed=None):
+    """ Run trial of 'controller' with environment 'env'.
+
+    Parameters
+    ----------
+    env : env-class, environment.
+
+    controller : controller-class, controller.
+
+    enable_controller_early_stopping: bool, enable controller early-stopping.
+
+    seed : None, int, random-instance, seed for the experiment.
+
+    Return
+    ------
+    T : int, number of iteration.
+    mean_regret : float, average regret for all agents.
+    best_arms : dict, dictionary with agent_name as keys and idx of the
+        estimated best arm as values.
+    """
+    # ensure to reset the environment
+    env.reset(seed=seed)
+
+    # trigger first observations
+    actions = controller.init_act()
+    observations, rewards, _, _ = env.step(actions)
+
+    mean_regret, T = [], 0
+
+    while True:
+
+        # controller/environment interaction
+        actions = controller.act(observations, rewards)
+        observations, rewards, done, _ = env.step(actions)
+
+        # regret storing
+        all_agent_regrets = list(env.regret().values())
+        all_agent_regrets = np.array(all_agent_regrets, dtype=float)
+        mean_regret.append(np.mean(all_agent_regrets))
+
+        # controller early-stopping
+        if enable_controller_early_stopping & controller.done:
+            break
+
+        # environement early-stopping
+        if done:
+            break
+
+        T += 1
+
+    return T, mean_regret, controller.best_arms
+
+
+def run_trials(env, controller, enable_controller_early_stopping=False,
+               seeds=None, n_jobs=1, verbose=True):
+    """Run in parallel 'run_trial' with the given parameters."""
+    delayed_pool = []
+    for seed in seeds:
+
+        trial_kwargs = dict(
+            env=env, controller=controller,
+            enable_controller_early_stopping=enable_controller_early_stopping,
+            seed=seed,
+                    )
+
+        delayed_pool.append(delayed(run_trial)(**trial_kwargs))
+
+    verbose_level = 100 if verbose else 0
+    trial_results = Parallel(n_jobs=n_jobs,
+                             verbose=verbose_level)(delayed_pool)
+
+    return trial_results
+
+
+def launch_experiment(env_names, envs, controller_names, controllers,
+                      n_trials=10, n_jobs=1, seeds=None,
+                      enable_controller_early_stopping=False, verbose=False):
     """ Run, for each env in 'envs', 'n_trials' time each controller in
     'controllers' with an horizon 'T'.
 
     Parameters
     ----------
-    env_names : str,
+    env_names : list of str, list of environment names.
 
-    envs : env-class,
+    envs : list of env-class, list of environments.
 
-    controller_names : str,
+    controller_names : list of str, list of controller names.
 
-    controllers : controller-class,
+    controllers : list of controller-class, list of controllers.
 
-    n_trials : int, default=10
+    n_trials : int, default=10, number of trials.
 
-    T : int, default=500
+    n_jobs : int, number of CPU to use.
 
-    verbose : bool, default=False
+    seeds : list of None, int, random-instance, seed for the experiment.
 
+    enable_controller_early_stopping : bool, default=False, to allow early
+        stopping.
+
+    verbose : bool, default=False, verbosity level.
 
     Return
     ------
-    regrets :
+    regrets : dict of dict of list of tuple, the tuple gathers (T, regret,
+        best_arm), the list entries correspond to each agent for each
+        environment times the controllers used (the two dictionaries).
     """
-    all_regrets = {}
+    if seeds is None:
+        seeds = [None] * n_trials
+
+    if len(seeds) != n_trials:
+        raise ValueError(f"'seeds' should contains 'n_trials' seeds, got "
+                         f"{len(seeds)}")
+
+    all_results = {}
 
     for env_name, env in zip(env_names, envs):
 
-        regrets = {}
+        results = {}
 
         for controller_name, controller in zip(controller_names, controllers):
 
             if verbose:
                 print(f"[run_simulation] running '{controller_name}' on "
-                      f"'{env_name}'.")
+                    f"'{env_name}'.")
 
-            trial_regrets = np.zeros((n_trials, T), dtype=float)
+            trial_results = run_trials(
+        env=env, controller=controller,
+        enable_controller_early_stopping=enable_controller_early_stopping,
+        seeds=seeds, n_jobs=n_jobs, verbose=verbose
+                                        )
 
-            for i in range(1, n_trials + 1):
+            results[controller_name] = trial_results
 
-                # reset environment
-                env.reset()
-
-                # trigger first observations
-                actions = controller.init()
-                observations, rewards, _, _ = env.step(actions)
-
-                while True:
-
-                    # controller/environment interaction
-                    actions = controller.act(observations, rewards)
-                    observations, rewards, done, _ = env.step(actions)
-
-                    # regret storing
-                    mean_trial_regret = np.mean(list(env.regret().values()))
-                    trial_regrets[i - 1, env.t - 1] = mean_trial_regret
-
-                    # simulation early-stopping
-                    if done:
-                        break
-
-            regrets[controller_name] = trial_regrets
-
-        all_regrets[env_name] = regrets
+        all_results[env_name] = results
 
     if verbose:
-        print("[run_simulation] all runs done.")
+        print("[run_simulation] all run(s) done.")
 
-    return all_regrets
+    return all_results
