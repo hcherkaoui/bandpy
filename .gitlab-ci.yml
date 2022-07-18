@@ -21,9 +21,3 @@ unit-test:
   artifacts:
       reports:
         cobertura: coverage.xml
-
-example:
-  stage: example
-  script:
-    - cd examples/
-    - python benchmark.py --fig-dirname . --verbose

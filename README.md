@@ -4,7 +4,7 @@
 Bandpy
 ======
 
-Bandpy: multi-arms bandit Python package.
+Bandpy: multi-arms / multi-agents bandit Python package.
 
 Important links
 ===============
@@ -23,7 +23,7 @@ In order install the package, run::
 To validate the installation, run::
 
     cd examples/
-    python benchmark.py --verbose  # run the simple benchmark
+    jupyter-notebook  # to play around with the examples
 
 
 Dependencies
