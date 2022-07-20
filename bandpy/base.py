@@ -86,6 +86,14 @@ class Controller:
         for n in range(self.N):
             self.agents[f"agent_{n}"] = agent_cls(**agent_kwargs)
 
+    @property
+    def best_arms(self):
+        """Return for each agent the estimated best arm. """
+        best_arms = dict()
+        for agent_name, agent in self.agents.items():
+            best_arms[agent_name] = agent.best_arm
+        return best_arms
+
     def init_act(self):
         """ Make each agent pulls randomly an arm to initiliaze the simulation.
         """

@@ -56,7 +56,7 @@ def run_trial(env, controller, enable_controller_early_stopping=False,
 
         T += 1
 
-    return T, mean_regret, controller.best_arms
+    return T, mean_regret, controller.best_arms, controller, env
 
 
 def run_trials(env, controller, enable_controller_early_stopping=False,
@@ -64,13 +64,11 @@ def run_trials(env, controller, enable_controller_early_stopping=False,
     """Run in parallel 'run_trial' with the given parameters."""
     delayed_pool = []
     for seed in seeds:
-
         trial_kwargs = dict(
             env=env, controller=controller,
             enable_controller_early_stopping=enable_controller_early_stopping,
             seed=seed,
                     )
-
         delayed_pool.append(delayed(run_trial)(**trial_kwargs))
 
     verbose_level = 100 if verbose else 0

@@ -329,6 +329,19 @@ class GreedyLinGapE(Agent):
             best_arms = np.arange(self.K)[filter]
             return self.randomly_select_one_arm(best_arms)
 
+    def _update_A_b(self, last_k, last_r):
+        """Update A and b from observation."""
+        if isinstance(last_k, list) & isinstance(last_r, list):
+            for last_k_, last_r_ in zip(last_k, last_r):
+                last_x_k_ = self.arms[last_k_].reshape((self.d, 1))
+                self.A += last_x_k_.dot(last_x_k_.T)
+                self.b += last_x_k_ * last_r_
+
+        else:
+            last_x_k = self.arms[last_k].reshape((self.d, 1))
+            self.A += last_x_k.dot(last_x_k.T)
+            self.b += last_x_k * last_r
+
     def act(self, observation, reward):
         """Select an arm."""
 
@@ -338,9 +351,7 @@ class GreedyLinGapE(Agent):
         last_r = reward
 
         # update main common statistic variables
-        last_x_k = self.arms[last_k].reshape((self.d, 1))
-        self.A += last_x_k.dot(last_x_k.T)
-        self.b += last_x_k * last_r
+        self._update_A_b(last_k, last_r)
 
         if t < self.K:
             # arm selection
