@@ -109,6 +109,7 @@ class LinearBandit(BanditEnv):
     T : int, the iteration finite horizon.
     arms : list of np.array, list of arms.
     theta : np.array, theta parameter.
+    sigma : float, standard deviation of the noise.
     seed : np.random.RandomState instance, the random seed.
     """
     def __init__(self, T, arms, theta, sigma=1.0, seed=None):
@@ -133,6 +134,38 @@ class LinearBandit(BanditEnv):
         return r + noise
 
 
+class RandomLinearBandit(LinearBandit):
+    """'RandomLinearBandit' class to define a Linear Bandit in dimension 'd'
+    with K random Gaussian arms and a Gaussian random theta. The reward is
+    defined as 'r = theta.T.dot(x_k) + noise' with noise drawn from a centered
+    Gaussian distribution.
+
+    Parameters
+    ----------
+    T : int, the iteration finite horizon.
+    d : int, dimension of the problem.
+    K : int, number of arms.
+    sigma : float, standard deviation of the noise.
+    """
+    def __init__(self, T, d, K, sigma=1.0, seed=None):
+        """Init."""
+
+        if d < 2:
+            raise ValueError(f"Dimendion 'd' should be >=2, got {d}")
+
+        self.d = d
+
+        rng = check_random_state(seed)
+
+        arms = []
+        for _ in range(K):
+            arms.append(rng.randn(self.d))
+
+        theta = rng.randn(self.d)
+
+        super().__init__(T=T, arms=arms, theta=theta, sigma=sigma, seed=rng)
+
+
 class CanonicalLinearBandit(LinearBandit):
     """'LinearBandit' class to define a Linear Bandit in dimension 'd' with d+1
     arms ([1, 0, 0, ...], [0, 1, 0, ...], [cos(delta), sin(delta), ...]) with
@@ -146,6 +179,7 @@ class CanonicalLinearBandit(LinearBandit):
     d : int, dimension of the problem.
     delta : float, default=0.01, angle for the third arm (supposed to be closed
         to the optimal arm x_2)
+    sigma : float, standard deviation of the noise.
     """
     def __init__(self, T, d, delta, sigma=1.0, seed=None):
         """Init."""
@@ -176,32 +210,96 @@ class CanonicalLinearBandit(LinearBandit):
         super().__init__(T=T, arms=arms, theta=theta, sigma=sigma, seed=seed)
 
 
-class RandomLinearBandit(LinearBandit):
-    """'RandomLinearBandit' class to define a Linear Bandit in dimension 'd'
-    with K random Gaussian arms and a Gaussian random theta. The reward is
-    defined as 'r = theta.T.dot(x_k) + noise' with noise drawn from a centered
+class ClustersCanonicalLinearBandit(BanditEnv):
+    """'ClustersCanonicalLinearBandit' class to define a Linear Bandit in
+    dimension 'd' with three different theta. The reward is defined as
+    'r = theta_l_k.T.dot(x_k) + noise' with noise drawn from a centered
     Gaussian distribution.
 
     Parameters
     ----------
     T : int, the iteration finite horizon.
     d : int, dimension of the problem.
-    K : int, number of arms.
+    delta : float, default=0.01, angle for the third arm (supposed to be closed
+        to the optimal arm x_2)
+    n_thetas : int, number of theta for the model.
+    sigma : float, standard deviation of the noise.
     """
-    def __init__(self, T, d, K, sigma=1.0, seed=None):
+    def __init__(self, T, d, delta, n_thetas, sigma=1.0, seed=None):
         """Init."""
 
         if d < 2:
-            raise ValueError(f"Dimendion 'd' should be >=2, got {d}")
+            raise ValueError(f"Dimendion 'd' should be >= 2, got {d}")
 
+        if not ((delta > 0.0) and (delta < np.pi)):
+            raise ValueError(f"delta should belongs to ]0.0, pi[, "
+                             f"got {delta}")
+
+
+        if d < n_thetas:
+            raise ValueError(f"Dimendion 'n_thetas' should be < {d}"
+                             f", got {n_thetas}")
+
+        self.n_thetas = n_thetas
         self.d = d
 
-        rng = check_random_state(seed)
+        # gather canonical arms
+        self.arms = []
+        for i in range(self.d):
+            x_ = np.zeros((self.d, 1))
+            x_[i] = 1.0
+            self.arms.append(x_)
 
-        arms = []
-        for _ in range(K):
-            arms.append(rng.randn(self.d))
+        self.thetas = []
+        for non_zero_idx in range(self.n_thetas):
 
-        theta = rng.randn(self.d)
+            # define theta
+            theta = np.zeros((self.d, 1))
+            theta[non_zero_idx] = 2.0
 
-        super().__init__(T=T, arms=arms, theta=theta, sigma=sigma, seed=rng)
+            # define corresponding nearly optimal arm
+            if non_zero_idx % 2 == 0:
+                nearly_opt_x_k = np.zeros((self.d, 1))
+                nearly_opt_x_k[non_zero_idx] = np.cos(delta)
+                nearly_opt_x_k[non_zero_idx + 1] = np.sin(delta)
+            else:
+                nearly_opt_x_k = np.zeros((self.d, 1))
+                nearly_opt_x_k[non_zero_idx - 1] = np.cos(np.pi / 2.0  - delta)
+                nearly_opt_x_k[non_zero_idx] = np.sin(np.pi / 2.0  - delta)
+
+            self.arms.append(np.array(nearly_opt_x_k))
+            self.thetas.append(theta)
+
+        self.theta_per_agent = dict()
+
+        self.K = len(self.arms)
+
+        self.sigma = sigma
+
+        # deactivate best_arm / best_reward
+        self.best_arm = None  # XXX
+        self.best_reward = 2.0  # XXX same for each theta
+
+        super().__init__(T=T, seed=seed)
+
+    def assign_agent_models(self, agent_names):
+        """Assign a theta for each agent."""
+        N = len(agent_names)
+
+        theta_idx = []  # [0 0 0 ... 1 1 ... 2 ... 2 2]
+        for theta_i in range(self.n_thetas):
+            theta_idx += [theta_i] * int(N / self.n_thetas)
+        theta_idx += [theta_i] * (N - len(theta_idx))
+
+        for agent_name, theta_i in zip(agent_names, theta_idx):
+            self.theta_per_agent[agent_name] = theta_i
+
+    def compute_reward(self, agent_name, k):
+
+        x_k = self.arms[k].reshape((self.d, 1))
+        theta = self.thetas[self.theta_per_agent[agent_name]]
+
+        r = float(x_k.T.dot(theta))
+        noise = float(self.sigma * self.rng.randn())
+
+        return r + noise
