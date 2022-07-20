@@ -235,7 +235,6 @@ class ClustersCanonicalLinearBandit(BanditEnv):
             raise ValueError(f"delta should belongs to ]0.0, pi[, "
                              f"got {delta}")
 
-
         if d < n_thetas:
             raise ValueError(f"Dimendion 'n_thetas' should be < {d}"
                              f", got {n_thetas}")
@@ -264,8 +263,8 @@ class ClustersCanonicalLinearBandit(BanditEnv):
                 nearly_opt_x_k[non_zero_idx + 1] = np.sin(delta)
             else:
                 nearly_opt_x_k = np.zeros((self.d, 1))
-                nearly_opt_x_k[non_zero_idx - 1] = np.cos(np.pi / 2.0  - delta)
-                nearly_opt_x_k[non_zero_idx] = np.sin(np.pi / 2.0  - delta)
+                nearly_opt_x_k[non_zero_idx - 1] = np.cos(np.pi / 2.0 - delta)
+                nearly_opt_x_k[non_zero_idx] = np.sin(np.pi / 2.0 - delta)
 
             self.arms.append(np.array(nearly_opt_x_k))
             self.thetas.append(theta)

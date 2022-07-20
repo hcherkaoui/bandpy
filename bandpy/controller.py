@@ -113,7 +113,7 @@ class ClusteredLinearAgentsController(Controller):
             observations_per_cluster, rewards_per_cluster = dict(), dict()
             for label in self.unique_labels:
                 empty_observation = {'last_arm_pulled': [], 'last_reward': [],
-                                     't': t,}
+                                     't': t}
                 observations_per_cluster[label] = empty_observation
                 rewards_per_cluster[label] = []
 
