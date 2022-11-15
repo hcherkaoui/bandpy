@@ -21,7 +21,7 @@ install Bandpy package. """
 from distutils.version import LooseVersion
 
 
-__version__ = '0.0.1'
+__version__ = '0.1.dev'
 
 _BANDPY_GITHUB_REPO_URL = ('https://rnd-gitlab-eu.huawei.com/Noahs-Ark/'
                            'libraries/bandpy')
