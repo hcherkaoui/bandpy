@@ -5,7 +5,11 @@ import copy
 import itertools
 from joblib import Parallel, delayed
 import numpy as np
+from .info import __version__
 from .utils import convert_grid_to_list
+
+
+__version__ = __version__
 
 
 def run_one_trial(env,

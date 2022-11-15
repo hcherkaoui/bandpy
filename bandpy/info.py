@@ -39,11 +39,35 @@ REQUIRED_MODULE_METADATA = (
         'min_version': '1.10.0',
         'required_at_installation': True,
         'install_info': _BANDPY_INSTALL_MSG}),
+    ('pandas', {
+        'min_version': '1.4.1',
+        'required_at_installation': True,
+        'install_info': _BANDPY_INSTALL_MSG}),
+    ('scipy', {
+        'min_version': '1.8.0',
+        'required_at_installation': True,
+        'install_info': _BANDPY_INSTALL_MSG}),
     ('joblib', {
         'min_version': '0.16.0',
         'required_at_installation': True,
         'install_info': _BANDPY_INSTALL_MSG}),
-
+    ('scikit-learn', {
+        'min_version': '1.0.2',
+        'import_name': 'sklearn',
+        'required_at_installation': True,
+        'install_info': _BANDPY_INSTALL_MSG}),
+    ('networkx', {
+        'min_version': '2.8.6',
+        'required_at_installation': True,
+        'install_info': _BANDPY_INSTALL_MSG}),
+    ('gym', {
+        'min_version': '0.23.1',
+        'required_at_installation': True,
+        'install_info': _BANDPY_INSTALL_MSG}),
+    ('matrix_factorization', {
+        'min_version': '0.0.0',  # no version avalaible
+        'required_at_installation': True,
+        'install_info': _BANDPY_INSTALL_MSG}),
     )
 
 

@@ -2,9 +2,15 @@ image: python:latest
 
 before_script:
   - python --version
+
+  # redirect of the Huawei mirror
   - echo -e "[global]\nindex-url = http://mirrors.tools.huawei.com/pypi/simple\ntrusted-host = mirrors.tools.huawei.com\ntimeout = 120" > ~/.pip/pip.conf
+
+  # install Bandpy package
   - pip install -r requirements.txt
   - pip install -e .
+
+  # install usefull CI tools
   - pip install pytest pytest-cov coverage flake8
 
 stages:

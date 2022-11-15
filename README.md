@@ -33,7 +33,13 @@ The required dependencies to use the software are:
 
  * Matplotlib (>=3.0.0)
  * Numpy (>=1.10.0)
+ * Pandas (>=1.4.1)
+ * Scipy (>=1.8.0)
  * Joblib (>=0.16.0)
+ * Scikit-Learn (>=1.0.2)
+ * Networkx (>=2.8.6)
+ * Gym (>=0.23.1)
+ * matrix_factorization
 
 Dev
 ===

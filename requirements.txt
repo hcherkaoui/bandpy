@@ -1,3 +1,9 @@
 matplotlib>=3.0.0
 numpy>=1.10.0
+pandas>=1.4.1
+scipy>=1.8.0
 joblib>=0.16.0
+scikit_learn>=1.0.2
+networkx>=2.8.6
+gym>=0.23.1
+matrix_factorization
