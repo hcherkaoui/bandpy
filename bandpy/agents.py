@@ -2,7 +2,17 @@
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import numpy as np
+import numba
+from scipy import optimize
 from .base import Agent
+
+
+@numba.jit((numba.float64[:, :], numba.float64[:, :]), nopython=True,
+           cache=True, fastmath=True)
+def _fast_inv_sherman_morrison(inv_A, x):  # pragma: no cover
+    """Sherman-Morrison identity to compute the inverse of A + xxT."""
+    inv_A_x = inv_A.dot(x)
+    return inv_A - inv_A_x.dot(x.T.dot(inv_A)) / (1.0 + x.T.dot(inv_A_x))
 
 
 class FollowTheLeader(Agent):
@@ -27,9 +37,7 @@ class FollowTheLeader(Agent):
         if not."""
         mean_reward_per_arms = [np.mean(self.reward_per_arms[k])
                                 for k in range(self.K)]
-        filter = np.max(mean_reward_per_arms) == mean_reward_per_arms
-        best_arms = np.arange(self.K)[filter]
-        return self.randomly_select_one_arm(best_arms)
+        return np.argmax(mean_reward_per_arms)
 
     def act(self, observation, reward):
         """Select an arm."""
@@ -122,9 +130,7 @@ class EC(Agent):
 
             mean_reward_per_arms = [np.mean(self.reward_per_arms[k])
                                     for k in range(self.K)]
-            filter = np.max(mean_reward_per_arms) == mean_reward_per_arms
-            best_arms = np.arange(self.K)[filter]
-            k = self.randomly_select_one_arm(best_arms)
+            k = np.argmax(mean_reward_per_arms)
 
             self.estimated_best_arm = k
 
@@ -168,7 +174,7 @@ class UCB(Agent):
                                 for k in range(self.K)]
         filter = np.max(mean_reward_per_arms) == mean_reward_per_arms
         best_arms = np.arange(self.K)[filter]
-        return self.randomly_select_one_arm(best_arms)
+        return self.randomly_select_one_arm_from_best_arms(best_arms)
 
     def act(self, observation, reward):
         """Select an arm."""
@@ -191,13 +197,121 @@ class UCB(Agent):
             else:
                 uu.append(mu_k + np.sqrt(2 * np.log(1.0/self.delta) / T_k))
 
-        best_arms = np.arange(self.K)[np.max(uu) == uu]
-        k = self.randomly_select_one_arm(best_arms)
+        k = np.argmax(uu)
 
         return k
 
+class MultiAgents(Agent):
+    """Agent that handle a multi-agents setting and the sharing of observation
+    while keeping a local estimation up to day.
 
-class LinUCB(Agent):
+    Parameters
+    ----------
+    arms : list of np.array, list of arms.
+    seed : None, int, random-instance, (default=None), random-instance
+        or random-seed used to initialize the random-instance
+    """
+
+    def __init__(self, arms, lbda=1.0, te=10, seed=None):
+        """Init."""
+
+        self.arms = arms
+        self.d = len(arms[0])  # dimension of the problem
+
+        self.te = te  # frequencie of exacte inv_A computation
+
+        self.lbda = lbda
+
+        self.A = np.eye(self.d)
+        self.b = np.zeros((self.d, 1))
+        self.inv_A = np.eye(self.d) / lbda
+        self.theta_hat = np.zeros((self.d, 1))
+
+        self.A_local = lbda * np.eye(self.d)
+        self.b_local = np.zeros((self.d, 1))
+        self.inv_A_local = np.eye(self.d) / lbda
+        self.theta_hat_local = np.zeros((self.d, 1))
+
+        super().__init__(K=len(self.arms), seed=seed)
+
+    def _update_inv_A_A_b_shared(self, last_k, last_r, t):
+        """Update A and b from observation."""
+        inv_A_exact = t % self.te == 0
+
+        for last_k_, last_r_ in zip(last_k, last_r):
+            last_x_k_ = self.arms[last_k_].reshape((self.d, 1))
+            self.A += last_x_k_.dot(last_x_k_.T)
+            self.b += last_x_k_ * last_r_
+            if not inv_A_exact:
+                self.inv_A = _fast_inv_sherman_morrison(self.inv_A, last_x_k_)
+
+        if inv_A_exact:
+            self.inv_A = np.linalg.inv(self.A)
+
+    def _update_inv_A_A_b_local(self, last_k, last_r, t):
+        """Update A and b from observation."""
+        inv_A_exact = t % self.te == 0
+
+        self.A_local_update = np.zeros((self.d, self.d))
+        self.b_local_update = np.zeros((self.d, 1))
+
+        last_x_k = self.arms[last_k].reshape((self.d, 1))
+
+        self.A_local += last_x_k.dot(last_x_k.T)
+        self.b_local += last_x_k * last_r
+
+        if not inv_A_exact:
+            self.inv_A_local = _fast_inv_sherman_morrison(self.inv_A_local,
+                                                          last_x_k)
+        else:
+            self.inv_A_local = np.linalg.inv(self.A_local)
+
+    def _update_all_statistics(self, observation, reward):
+        """Update all statistics (local and shared). """
+        # fetch and rename main variables
+        last_k = observation['last_arm_pulled']
+        last_r = reward
+        t = observation['t']
+
+        if isinstance(last_k, tuple) & isinstance(last_r, tuple):
+            last_k_local, last_k_shared = last_k
+            last_r_local, last_r_shared = last_r
+            self._update_inv_A_A_b_shared(last_k_shared, last_r_shared, t)
+            self._update_inv_A_A_b_local(last_k_local, last_r_local, t)
+
+        else:
+            self._update_inv_A_A_b_shared([last_k], [last_r], t)
+            self._update_inv_A_A_b_local(last_k, last_r, t)
+
+        self.theta_hat = self.inv_A.dot(self.b)
+        self.theta_hat_local = self.inv_A_local.dot(self.b_local)
+
+    @property
+    def best_arm(self):
+        """Return the estimated best arm if the estimation is avalaible, None
+        if not."""
+        mean_reward_per_arms = [float(self.theta_hat.T.dot(self.arms[k]))
+                                for k in range(self.K)]
+        return np.argmax(mean_reward_per_arms)
+
+
+class LinUniform(MultiAgents):
+    """ Uniform agent for linear bandit.
+
+    Parameters
+    ----------
+    arms : list of np.array, list of arms.
+    seed : None, int, random-instance, (default=None), random-instance
+        or random-seed used to initialize the random-instance
+    """
+
+    def act(self, observation, reward):
+        """Select an arm."""
+        self._update_all_statistics(observation, reward)
+        return self.randomly_select_arm()
+
+
+class LinUCB(MultiAgents):
     """ Linear Upper confidence bound class to define the UCB algorithm.
 
     Parameters
@@ -208,49 +322,15 @@ class LinUCB(Agent):
         or random-seed used to initialize the random-instance
     """
 
-    def __init__(self, arms, alpha, seed=None):
+    def __init__(self, arms, alpha, te=10, seed=None):
         """Init."""
-
-        if not (alpha > 0.0):
-            raise ValueError(f"'delta' should be positive, got {alpha}")
-
-        self.arms = arms
-        self.d = len(arms[0])  # dimension of the problem
-
         self.alpha = alpha
-        self.A = np.eye(self.d)
-        self.b = np.zeros((self.d, 1))
 
-        self.inv_A = np.linalg.pinv(self.A)
-        self.theta_hat = self.inv_A.dot(self.b)
-
-        super().__init__(K=len(self.arms), seed=seed)
-
-    @property
-    def best_arm(self):
-        """Return the estimated best arm if the estimation is avalaible, None
-        if not."""
-        mean_reward_per_arms = [float(self.theta_hat.T.dot(self.arms[k]))
-                                for k in range(self.K)]
-        filter = np.max(mean_reward_per_arms) == mean_reward_per_arms
-        best_arms = np.arange(self.K)[filter]
-        return self.randomly_select_one_arm(best_arms)
+        super().__init__(arms=arms, te=te, seed=seed)
 
     def act(self, observation, reward):
         """Select an arm."""
-
-        # fetch and rename main variables
-        last_k = observation['last_arm_pulled']
-        last_r = reward
-
-        # update main statistic variables
-        last_x_k = self.arms[last_k].reshape((self.d, 1))
-
-        self.A += last_x_k.dot(last_x_k.T)
-        self.b += last_x_k * last_r
-
-        self.inv_A = np.linalg.pinv(self.A)
-        self.theta_hat = self.inv_A.dot(self.b)
+        self._update_all_statistics(observation, reward)
 
         # arm selection
         uu = []
@@ -258,14 +338,61 @@ class LinUCB(Agent):
             u = self.theta_hat.T.dot(x_k)
             u += self.alpha * np.sqrt(x_k.T.dot(self.inv_A).dot(x_k))
             uu.append(float(u))
-
-        best_arms = np.arange(self.K)[np.max(uu) == uu]
-        k = self.randomly_select_one_arm(best_arms)
-
+        k = np.argmax(uu)
         return k
 
 
-class GreedyLinGapE(Agent):
+class EOptimalDesign(MultiAgents):
+    """ E-(trace) optimal design algorithm.
+
+    Parameters
+    ----------
+    arms : list of np.array, list of arms.
+    seed : None, int, random-instance, (default=None), random-instance
+        or random-seed used to initialize the random-instance
+    """
+
+    def __init__(self, arms, eps=1e-10, te=10, seed=None):
+        """Init."""
+        self.eps = eps
+
+        super().__init__(arms=arms, te=te, seed=seed)
+
+        self.p = self._min_f()
+
+    def _f(self, p):
+        """Objective function."""
+        A = np.zeros((self.d, self.d), dtype=float)
+        l_xk_xkT = [x_k.reshape((self.d, 1)).dot(x_k.reshape((1, self.d)))
+                    for x_k in self.arms]
+        for p_i, xk_xkT_i in zip(p, l_xk_xkT):
+            A += p_i * xk_xkT_i
+        return np.linalg.norm(np.linalg.pinv(A))
+
+    def _g_1(self, p):
+        return p
+
+    def _g_2(self, p):
+        return np.sum(p) - 1.0
+
+    def _min_f(self):
+        """A-optimal design planning function."""
+        mu_0 = np.array([1.0 / len(self.arms)] * len(self.arms))
+        constraints = [{'type':'ineq', 'fun': self._g_1},
+                       {'type':'eq', 'fun': self._g_2}]
+        p = optimize.minimize(self._f, x0=mu_0, constraints=constraints).x
+        assert not any(p < -self.eps), f"non-negative constraint violated: {p}"
+        p[p < 0.0] = 0.0
+        return p
+
+    def act(self, observation, reward):
+        """Select an arm."""
+        self._update_all_statistics(observation, reward)
+
+        return self.rng.choice(np.arange(self.K), p=self.p)
+
+
+class GreedyLinGapE(MultiAgents):
     """ Linear Gap-based Exploration class to define the LinGapE algorithm.
 
     Parameters
@@ -276,7 +403,7 @@ class GreedyLinGapE(Agent):
         or random-seed used to initialize the random-instance
     """
 
-    def __init__(self, arms, epsilon, delta, R, S, lbda, seed=None):
+    def __init__(self, arms, epsilon, delta, R, S, lbda, te=10, seed=None):
         """Init."""
 
         if not (epsilon >= 0.0):
@@ -297,65 +424,22 @@ class GreedyLinGapE(Agent):
         self.done = False
         self.estimated_best_arm = None
 
-        self.arms = arms
-        self.d = len(arms[0])  # dimension of the problem
-
         self.epsilon = epsilon
         self.delta = delta
         self.R = R
         self.S = S
         self.lbda = lbda
 
-        self.epsilon = epsilon
-        self.A = self.lbda * np.eye(self.d)
-        self.b = np.zeros((self.d, 1))
-
-        self.inv_A = np.linalg.pinv(self.A)
-        self.theta_hat = self.inv_A.dot(self.b)
-
-        super().__init__(K=len(self.arms), seed=seed)
-
-    @property
-    def best_arm(self):
-        """Return the estimated best arm if the estimation is avalaible, None
-        if not."""
-        if self.estimated_best_arm is not None:
-            return self.estimated_best_arm
-
-        else:
-            mean_reward_per_arms = [float(self.theta_hat.T.dot(self.arms[k]))
-                                    for k in range(self.K)]
-            filter = np.max(mean_reward_per_arms) == mean_reward_per_arms
-            best_arms = np.arange(self.K)[filter]
-            return self.randomly_select_one_arm(best_arms)
-
-    def _update_A_b(self, last_k, last_r):
-        """Update A and b from observation."""
-        if isinstance(last_k, list) & isinstance(last_r, list):
-            for last_k_, last_r_ in zip(last_k, last_r):
-                last_x_k_ = self.arms[last_k_].reshape((self.d, 1))
-                self.A += last_x_k_.dot(last_x_k_.T)
-                self.b += last_x_k_ * last_r_
-
-        else:
-            last_x_k = self.arms[last_k].reshape((self.d, 1))
-            self.A += last_x_k.dot(last_x_k.T)
-            self.b += last_x_k * last_r
+        super().__init__(arms=arms, te=te, seed=seed)
 
     def act(self, observation, reward):
         """Select an arm."""
 
-        # fetch and rename main variables
-        t = observation['t']
-        last_k = observation['last_arm_pulled']
-        last_r = reward
+        self._update_all_statistics(observation, reward)
 
-        # update main common statistic variables
-        self._update_A_b(last_k, last_r)
-
-        if t < self.K:
+        if observation['t'] < self.K:
             # arm selection
-            k = t % self.K
+            k = observation['t'] % self.K
 
         else:
             # update main statistic variables
@@ -363,10 +447,6 @@ class GreedyLinGapE(Agent):
             C /= (self.delta * self.lbda ** (self.d/2.0))
             C = np.sqrt(2 * np.log(C))
             C = float(C * self.R + np.sqrt(self.lbda) * self.S)
-
-            # estimate theta
-            self.inv_A = np.linalg.pinv(self.A)
-            self.theta_hat = self.inv_A.dot(self.b)
 
             # best arm
             ii = []
@@ -377,14 +457,14 @@ class GreedyLinGapE(Agent):
             i = np.argmax(ii)
             x_i = self.arms[i].reshape((self.d, 1))
 
-            # worst and most incertain arm
+            # best and most uncertain arm
             jj = []
             for x_k in self.arms:
                 x_k = x_k.reshape((self.d, 1))
                 gap_ki = x_k - x_i
-                diff_r = gap_ki.T.dot(self.theta_hat)
-                ub = np.sqrt(gap_ki.T.dot(self.inv_A).dot(gap_ki))
-                jj.append(float(diff_r) + float(ub) * C)
+                r_hat = gap_ki.T.dot(self.theta_hat)
+                ucb = np.sqrt(gap_ki.T.dot(self.inv_A).dot(gap_ki))
+                jj.append(float(r_hat) + float(ucb) * C)
             j = np.argmax(jj)
             x_j = self.arms[j].reshape((self.d, 1))
             B = np.max(jj)
@@ -398,11 +478,10 @@ class GreedyLinGapE(Agent):
             aa = []
             for x_k in self.arms:
                 x_k = x_k.reshape((self.d, 1))
-                inv_A_x_k = np.linalg.pinv(self.A + x_k.dot(x_k.T))
+                inv_A_x_k = _fast_inv_sherman_morrison(self.inv_A, x_k)
                 gap_ij = x_i - x_j
                 a = np.sqrt(gap_ij.T.dot(inv_A_x_k).dot(gap_ij))
                 aa.append(float(a))
-            best_arms = np.arange(self.K)[np.min(aa) == aa]
-            k = self.randomly_select_one_arm(best_arms)
+            k = np.argmax(aa)
 
         return k
