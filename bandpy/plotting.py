@@ -5,13 +5,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_regrets(all_regrets, fig_fname=None, verbose=False):
+def plot_regrets(all_regrets, fig_fname=None, figsize_x=9, figsize_y=6,
+                 verbose=False):
     """ Plot the regrets for all the environments and controllers."""
 
     env_names = list(all_regrets.keys())
 
     fig, axis = plt.subplots(nrows=len(env_names), ncols=1,
-                             figsize=(9, 6 * len(env_names)))
+                             figsize=(figsize_x, figsize_y * len(env_names)))
 
     if len(env_names) == 1:
         axis = [axis]
