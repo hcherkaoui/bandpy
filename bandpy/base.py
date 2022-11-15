@@ -11,18 +11,22 @@ class BanditEnv():
     def __init__(self, T, seed=None):
         """Init."""
         self.T = T
-        self.t = 0
+        self.t = 1
         self.seed = seed
         self.rng = check_random_state(self.seed)
         self.S_t = dict()
+        self.best_S_t = dict()
+        self.worst_S_t = dict()
 
     def reset(self, seed=np.NaN):
         """Reset the environment (and the randomness if seed is not NaN)."""
-        self.t = 0
+        self.t = 1
         if not np.isnan(seed):
             self.seed = seed
             self.rng = check_random_state(self.seed)
         self.S_t = dict()
+        self.Best_S_t = dict()
+        self.Worst_S_t = dict()
 
     def step(self, actions):
         """Pull the k-th arm chosen in 'actions'."""
@@ -59,32 +63,67 @@ class BanditEnv():
 
     def update_agent_total_rewards(self, name_agent, r):
         """Update S_t = sum_{s=1}^t r_s."""
+        theta_idx = self.theta_per_agent[name_agent]
         if name_agent in self.S_t:
             self.S_t[name_agent] += r
+            self.best_S_t[name_agent] += self.best_reward[theta_idx]
+            self.worst_S_t[name_agent] += self.worst_reward[theta_idx]
         else:
             self.S_t[name_agent] = r
+            self.best_S_t[name_agent] = self.best_reward[theta_idx]
+            self.worst_S_t[name_agent] = self.worst_reward[theta_idx]
 
     def regret(self):
         """Expected regret."""
-        if not self.S_t:
-            return np.NaN
+        if isinstance(self.best_reward, dict):
+            name_agents = self.S_t.keys()
+            regrets = []
+            for name_agent in name_agents:
+                theta_idx = self.theta_per_agent[name_agent]
+                regret_ = self.best_reward[theta_idx]
+                regret_ -= self.S_t[name_agent] / self.t
+                regrets.append(regret_)
 
         else:
             name_agents = self.S_t.keys()
             S_t = np.array(list(self.S_t.values()), dtype=float)
             regrets = self.best_reward - S_t / self.t
-            return dict(zip(name_agents, regrets))
+
+        return dict(zip(name_agents, regrets))
+
+    def mean_regret(self):
+        """Return the network averaged regret."""
+        return np.mean(list(self.regret().values()))
+
+    def mean_reward(self):
+        """Return the network averaged cumulative reward."""
+        return np.mean(list(self.S_t.values()))
+
+    def mean_best_reward(self):
+        """Return the network averaged best cumulative reward."""
+        return np.mean(list(self.best_S_t.values()))
+
+    def mean_worst_reward(self):
+        """Return the network averaged worst cumulative reward."""
+        return np.mean(list(self.worst_S_t.values()))
 
 
 class Controller:
     """ Abstract class for a controller then handle multiple agents. """
 
-    def __init__(self, N, agent_cls, agent_kwargs):
+    def __init__(self, N, agent_cls, agent_kwargs, agent_names=None):
         """Init."""
-        self.N = N
         self.agents = dict()
-        for n in range(self.N):
-            self.agents[f"agent_{n}"] = agent_cls(**agent_kwargs)
+
+        self.N = N
+
+        if agent_names is None:
+            self.agent_names = [f"agent_{i}" for i in range(self.N)]
+        else:
+            self.agent_names = agent_names
+
+        for agent_name in self.agent_names:
+            self.agents[agent_name] = agent_cls(**agent_kwargs)
 
     @property
     def best_arms(self):
@@ -94,12 +133,20 @@ class Controller:
             best_arms[agent_name] = agent.best_arm
         return best_arms
 
-    def init_act(self):
+    def init_act_randomly(self):
         """ Make each agent pulls randomly an arm to initiliaze the simulation.
         """
         actions = dict()
         for agent_name, agent in self.agents.items():
             actions[agent_name] = agent.randomly_select_arm()
+        return actions
+
+    def init_act(self, k=0):
+        """ Make each agent pulls randomly an arm to initiliaze the simulation.
+        """
+        actions = dict()
+        for agent_name, agent in self.agents.items():
+            actions[agent_name] = k  # select the k-th arm for all agents
         return actions
 
 
@@ -116,17 +163,17 @@ class Agent:
     def __init__(self, K, seed=None):
         """Init."""
         self.K = K
-        self.random_state = check_random_state(seed)
+        self.rng = check_random_state(seed)
 
     def randomly_select_arm(self):
         """Randomly select an arm."""
-        k = self.random_state.randint(self.K)
+        k = self.rng.randint(self.K)
         return int(k)
 
-    def randomly_select_one_arm(self, best_arms):
+    def randomly_select_one_arm_from_best_arms(self, best_arms):
         """Randomly select a best arm in a tie case."""
         if len(best_arms) > 1:
-            idx = self.random_state.randint(0, len(best_arms))
+            idx = self.rng.randint(0, len(best_arms))
             k = best_arms[idx]
 
         else:
