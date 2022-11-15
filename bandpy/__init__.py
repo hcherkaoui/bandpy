@@ -1,39 +1,61 @@
 """ Bandpy. """
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
+import copy
+import itertools
 from joblib import Parallel, delayed
 import numpy as np
+from .utils import convert_grid_to_list
 
 
-def run_trial(env, controller, enable_controller_early_stopping=False,
-              seed=None):
-    """ Run trial of 'controller' with environment 'env'.
+def run_one_trial(env,
+                  controller,
+                  controller_stop=False,
+                  seed=None):
+    """ Run on trial of 'controller' with environment 'env'.
 
     Parameters
     ----------
-    env : env-class, environment.
+    env : env-class, environment instance.
 
-    controller : controller-class, controller.
+    controller : controller-class, controller instance.
 
-    enable_controller_early_stopping: bool, enable controller early-stopping.
+    controller_stop: bool, enable controller early-stopping.
 
-    seed : None, int, random-instance, seed for the experiment.
+    seed : None, int, random-instance, seed for the trial.
 
     Return
     ------
-    T : int, number of iteration.
+    T : int, number of iterations done.
+
     mean_regret : float, average regret for all agents.
-    best_arms : dict, dictionary with agent_name as keys and idx of the
+
+    mean_reward : float, average cumulative reward for all agents.
+
+    mean_best_reward : float, average cumulative best reward for all agents.
+
+    mean_worst_reward : float, average cumulative worst reward for all agents.
+
+    best_arms : dict, dictionary with agent_name as keys and index of the
         estimated best arm as values.
+
+    controller : controller-class, controller class for later inspection.
+
+    env : env-class, environment class for later inspection.
     """
     # ensure to reset the environment
     env.reset(seed=seed)
 
     # trigger first observations
-    actions = controller.init_act()
+    actions = controller.init_act(k=0)
     observations, rewards, _, _ = env.step(actions)
 
-    mean_regret, T = [], 0
+    mean_regret = [env.mean_regret()]
+    mean_reward = [env.mean_reward()]
+    mean_best_reward = [env.mean_best_reward()]
+    mean_worst_reward = [env.mean_worst_reward()]
+
+    t = 1
 
     while True:
 
@@ -42,34 +64,70 @@ def run_trial(env, controller, enable_controller_early_stopping=False,
         observations, rewards, done, _ = env.step(actions)
 
         # regret storing
-        all_agent_regrets = list(env.regret().values())
-        all_agent_regrets = np.array(all_agent_regrets, dtype=float)
-        mean_regret.append(np.mean(all_agent_regrets))
+        mean_regret.append(env.mean_regret())
+        mean_reward.append(env.mean_reward())
+        mean_best_reward.append(env.mean_best_reward())
+        mean_worst_reward.append(env.mean_worst_reward())
 
         # controller early-stopping
-        if enable_controller_early_stopping & controller.done:
+        if controller_stop & controller.done:
             break
 
         # environement early-stopping
         if done:
             break
 
-        T += 1
+        t += 1
 
-    return T, mean_regret, controller.best_arms, controller, env
+    results = [t,
+               mean_regret,
+               mean_reward,
+               mean_best_reward,
+               mean_worst_reward,
+               controller.best_arms,
+               controller,
+               env,
+               ]
+
+    return results
 
 
-def run_trials(env, controller, enable_controller_early_stopping=False,
-               seeds=None, n_jobs=1, verbose=True):
-    """Run in parallel 'run_trial' with the given parameters."""
+def run_trials(env,
+               controller,
+               controller_stop=False,
+               seeds=None,
+               n_jobs=1,
+               verbose=True):
+    """Run in parallel 'run_one_trial' with the given parameters.
+
+    Parameters
+    ----------
+    env : env-class, environment instance.
+
+    controller : controller-class, controller instance.
+
+    controller_stop: bool, enable controller early-stopping.
+
+    seed : None, int, random-instance, seed for the trial.
+
+    n_jobs : int, number of CPU to use.
+
+    verbose : bool, enable verbose.
+
+    Return
+    ------
+    results : list, one-trial results, see 'run_one_trial' for more
+        information.
+    """
     delayed_pool = []
     for seed in seeds:
+
         trial_kwargs = dict(
-            env=env, controller=controller,
-            enable_controller_early_stopping=enable_controller_early_stopping,
-            seed=seed,
-                    )
-        delayed_pool.append(delayed(run_trial)(**trial_kwargs))
+            env=copy.deepcopy(env), controller=copy.deepcopy(controller),
+            controller_stop=controller_stop,
+            seed=seed)
+
+        delayed_pool.append(delayed(run_one_trial)(**trial_kwargs))
 
     verbose_level = 100 if verbose else 0
     trial_results = Parallel(n_jobs=n_jobs,
@@ -78,68 +136,81 @@ def run_trials(env, controller, enable_controller_early_stopping=False,
     return trial_results
 
 
-def launch_experiment(env_names, envs, controller_names, controllers,
-                      n_trials=10, n_jobs=1, seeds=None,
-                      enable_controller_early_stopping=False, verbose=False):
-    """ Run, for each env in 'envs', 'n_trials' time each controller in
-    'controllers' with an horizon 'T'.
+def run_trials_with_grid_search(env_cls,
+                                env_kwargs_grid,
+                                controller_cls,
+                                controller_kwargs_grid,
+                                controller_stop=False,
+                                seeds=None,
+                                n_jobs_trials=1,
+                                n_jobs_grid_search=1,
+                                verbose=True):
+    """Run 'run_trials' with a grid-search on the given parameters for both the
+    environment and the controller.
 
     Parameters
     ----------
-    env_names : list of str, list of environment names.
+    env_cls : env-class, environment class.
 
-    envs : list of env-class, list of environments.
+    env_kwargs_grid : dict of list, grid for env parameters.
 
-    controller_names : list of str, list of controller names.
+    controller_cls : controller-class, controller class.
 
-    controllers : list of controller-class, list of controllers.
+    controller_kwargs_grid : dict of list, grid for controller parameters.
 
-    n_trials : int, default=10, number of trials.
+    controller_stop: bool, enable controller early-stopping.
 
-    n_jobs : int, number of CPU to use.
+    seed : None, int, random-instance, seed for the trial.
 
-    seeds : list of None, int, random-instance, seed for the experiment.
+    n_jobs_trials : int, number of CPU to use for the trials.
 
-    enable_controller_early_stopping : bool, default=False, to allow early
-        stopping.
+    n_jobs_grid_search : int, number of CPU to use for the grid-search.
 
-    verbose : bool, default=False, verbosity level.
+    verbose : bool, enable verbose.
 
     Return
     ------
-    regrets : dict of dict of list of tuple, the tuple gathers (T, regret,
-        best_arm), the list entries correspond to each agent for each
-        environment times the controllers used (the two dictionaries).
+    best_results : list, one-trial results, see 'run_one_trial' for more
+        information.
+
+    all_results : dict, dict of list (one-trial results) for inspection, see
+        'run_one_trial' for more information.
     """
-    if seeds is None:
-        seeds = [None] * n_trials
+    env_kwargs_list = convert_grid_to_list(env_kwargs_grid)
+    controller_kwargs_list = convert_grid_to_list(controller_kwargs_grid)
 
-    if len(seeds) != n_trials:
-        raise ValueError(f"'seeds' should contains 'n_trials' seeds, got "
-                         f"{len(seeds)}")
+    envs = [env_cls(**env_kwargs) for env_kwargs in env_kwargs_list]
+    controllers = [controller_cls(**controller_kwargs)
+                   for controller_kwargs in controller_kwargs_list]
 
-    all_results = {}
+    def _run_trials(env, controller, seeds, n_jobs, verbose, controller_stop):
+        trial_results = run_trials(env=env, controller=controller,
+                                   controller_stop=controller_stop,
+                                   seeds=seeds, n_jobs=n_jobs,
+                                   verbose=verbose)
+        l_last_regret = [trial_result[1][-1] for trial_result in trial_results]
+        return np.mean(l_last_regret), trial_results
 
-    for env_name, env in zip(env_names, envs):
+    delayed_pool = []
+    for setting in itertools.product(envs, controllers):
 
-        results = {}
+        env, controller = setting
 
-        for controller_name, controller in zip(controller_names, controllers):
+        trial_kwargs = dict(env=env, controller=controller,
+                            controller_stop=controller_stop,
+                            n_jobs=n_jobs_trials,
+                            seeds=seeds, verbose=verbose)
 
-            if verbose:
-                print(f"[run_simulation] running '{controller_name}' on "
-                      f"'{env_name}'.")
+        delayed_pool.append(delayed(_run_trials)(**trial_kwargs))
 
-            trial_results = run_trials(env=env, controller=controller,
-                                       enable_controller_early_stopping=enable_controller_early_stopping,  # noqa
-                                       seeds=seeds, n_jobs=n_jobs,
-                                       verbose=verbose)
+    verbose_level = 100 if verbose else 0
+    all_results = Parallel(n_jobs=n_jobs_grid_search,
+                           verbose=verbose_level)(delayed_pool)
 
-            results[controller_name] = trial_results
+    results = dict()
+    for mean_last_regret, trial_results in all_results:
+        results[mean_last_regret] = trial_results
 
-        all_results[env_name] = results
+    min_last_regret = np.min(list(results.keys()))
 
-    if verbose:
-        print("[run_simulation] all run(s) done.")
-
-    return all_results
+    return results[min_last_regret], results
