@@ -201,6 +201,7 @@ class UCB(Agent):
 
         return k
 
+
 class MultiAgents(Agent):
     """Agent that handle a multi-agents setting and the sharing of observation
     while keeping a local estimation up to day.
@@ -378,8 +379,8 @@ class EOptimalDesign(MultiAgents):
     def _min_f(self):
         """A-optimal design planning function."""
         mu_0 = np.array([1.0 / len(self.arms)] * len(self.arms))
-        constraints = [{'type':'ineq', 'fun': self._g_1},
-                       {'type':'eq', 'fun': self._g_2}]
+        constraints = [{'type': 'ineq', 'fun': self._g_1},
+                       {'type': 'eq', 'fun': self._g_2}]
         p = optimize.minimize(self._f, x0=mu_0, constraints=constraints).x
         assert not any(p < -self.eps), f"non-negative constraint violated: {p}"
         p[p < 0.0] = 0.0

@@ -2,9 +2,7 @@
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import collections
-import os
 import numpy as np
-import pandas as pd
 from .base import BanditEnv
 from .loaders import movie_lens_loader, yahoo_loader
 from .utils import check_random_state
@@ -333,7 +331,7 @@ class DatasetEnv(BanditEnv):
         """Init."""
         self.dirname = dirname
 
-        self.d  = d
+        self.d = d
         self.K = K
         self.N = N
 
@@ -366,7 +364,7 @@ class DatasetEnv(BanditEnv):
     def get_r(self, agent_id, arm_id):
         """Get the reward for agent `agent_id` and arm `arm_id`."""
         filter_entry = ((self.data.agent_id == agent_id)
-                         & (self.data.arm_id == arm_id))
+                        & (self.data.arm_id == arm_id))
         if not self.data[filter_entry].empty:
             return float(self.data[filter_entry].reward)
         else:

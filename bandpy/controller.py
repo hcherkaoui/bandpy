@@ -6,7 +6,7 @@ import numpy as np
 from scipy import optimize
 import networkx as nx
 from .base import Controller
-from .agents import MultiAgents
+from .agents import MultiAgents, LinUCB
 from .utils import check_random_state, check_N_and_agent_names
 
 
@@ -70,17 +70,16 @@ class ClusteringController(Controller):
     def _switch_policy(self):
         """Switch the agent policy to a new one while keeping the gathered
         observation."""
-        if ((self.second_agent_cls is not None)
-            and (self.second_agent_kwargs is not None)):
+        if ((self.second_agent_cls is not None) and
+           (self.second_agent_kwargs is not None)):
 
             new_agents = dict()
 
             for n in range(self.N):
 
                 agent = self.agents[f"agent_{n}"]
-                new_agents[f"agent_{n}"] = \
-                            self.second_agent_cls(**self.second_agent_kwargs)
-                new_agent = new_agents[f"agent_{n}"]
+                new_agent = self.second_agent_cls(**self.second_agent_kwargs)
+                new_agents[f"agent_{n}"] = new_agent
 
                 new_agent.A = np.copy(agent.A)
                 new_agent.b = np.copy(agent.b)

@@ -14,7 +14,7 @@ def check_N_and_agent_names(N, agent_names):
 
     if (N is None) and (agent_names is None):
         raise ValueError("Number of agents N and 'agent_names' can't be "
-                            "both set to None.")
+                         "both set to None.")
 
     elif (N is not None) and (agent_names is None):
         return N, [f'agent_{i}' for i in range(N)]
@@ -25,8 +25,8 @@ def check_N_and_agent_names(N, agent_names):
     else:
         if N != len(agent_names):
             raise ValueError(f"Number of agents N and number of agents in"
-                                f" 'agent_names' should be equal,"
-                                f" got {N} and {len(agent_names)}.")
+                             f" 'agent_names' should be equal,"
+                             f" got {N} and {len(agent_names)}.")
 
         else:
             return N, agent_names
@@ -79,12 +79,12 @@ def tolerant_stats(arrs):
     for i, arr in enumerate(arrs):
         concat_arr[:len(arr), i] = arr
 
-    results = [concat_arr.mean(axis = -1),
+    results = [concat_arr.mean(axis=-1),
                concat_arr.std(axis=-1),
                concat_arr.max(axis=-1),
                concat_arr.min(axis=-1),
                np.array(all_lengths),
-              ]
+               ]
 
     return results
 

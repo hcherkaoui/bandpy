@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from joblib import Memory
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
 from .utils import fill_mising_values, check_random_state
 
 
@@ -62,7 +61,6 @@ def _yahoo_loader(dirname, N, K, d, n_clusters_k_means=100, seed=None):
 
     rng = check_random_state(seed)
 
-
     def _format_line(entry):
         """Format entry to numeric."""
         if ':' in entry:
@@ -104,8 +102,8 @@ def _yahoo_loader(dirname, N, K, d, n_clusters_k_means=100, seed=None):
     data.rename(columns=dict(zip(data.columns, columns)), inplace=True)
 
     # reduce the number of consulted documents (arms) with k-means
-    filter_arms = ((data.columns != 'rating')
-                    & (data.columns != 'user_id'))
+    filter_arms = ((data.columns != 'rating') &
+                   (data.columns != 'user_id'))
     X_train = np.unique(data.loc[:, filter_arms], axis=0)
     kmeans = KMeans(n_clusters=n_clusters_k_means).fit(X_train)
     X_test = data.loc[:, filter_arms].to_numpy()
@@ -128,7 +126,7 @@ def _yahoo_loader(dirname, N, K, d, n_clusters_k_means=100, seed=None):
 
     # reduce dimensionality
     user_id_retained = rng.choice(np.unique(data.user_id), size=N,
-                                        replace=False)
+                                  replace=False)
     data = data.loc[data.user_id.isin(user_id_retained)]
     data = data.loc[data.item_id < K]
 
@@ -141,7 +139,8 @@ def _yahoo_loader(dirname, N, K, d, n_clusters_k_means=100, seed=None):
                 'rating': 'reward'}
     data = data.rename(columns=col_name)
 
-    arms = [kmeans.cluster_centers_[l].flatten()[:d] for l in range(K)]
+    arms = [kmeans.cluster_centers_[label_].flatten()[:d]
+            for label_ in range(K)]
 
     # register the agent_id dataset-env mapping
     agent_i_to_env_agent_i = dict()
