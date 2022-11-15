@@ -19,5 +19,7 @@ unit-test:
     - pytest -vl --cov=bandpy --cov-append
     - coverage xml
   artifacts:
-      reports:
-        cobertura: coverage.xml
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
