@@ -31,8 +31,8 @@ def plot_regrets(all_regrets, fig_fname=None, figsize_x=9, figsize_y=6,
             axis[axis_idx].plot(np.arange(T), mean_regrets, lw=2.0,
                                 label=f"R_t ({controller_name})")
             axis[axis_idx].fill_between(np.arange(T),
-                                        mean_regrets + std_regrets / 2.0,
-                                        mean_regrets - std_regrets / 2.0,
+                                        mean_regrets + std_regrets,
+                                        mean_regrets - std_regrets,
                                         alpha=0.3)
 
         axis[axis_idx].axhline(lw=1.5, color='black')
