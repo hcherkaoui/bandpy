@@ -7,7 +7,7 @@ import numpy as np
 from bandpy.arms import LinearArms
 from bandpy.criterions import f_neg_ucb, grad_neg_ucb
 from bandpy.utils import (tests_set_up, generate_gaussian_arm_entries,
-                          arm_entries_to_arms, convert_grid_to_list)
+                          arm_entries_to_arms)
 
 
 @pytest.mark.parametrize('d', [2, 10])
@@ -36,8 +36,12 @@ def test_LinearArms(d, seed):
                        criterion_grad=grad_neg_ucb,
                        criterion_grad_kwargs=criterion_grad_kwargs)
 
-    all_linear_arms = [LinearArms(**dict(**params_base, **dict(arms=arms, arm_entries=None))),
-                       LinearArms(**dict(**params_base, **dict(arms=None, arm_entries=arm_entries))),
+    all_linear_arms = [LinearArms(**dict(**params_base,
+                                         **dict(arms=arms,
+                                                arm_entries=None))),
+                       LinearArms(**dict(**params_base,
+                                         **dict(arms=None,
+                                                arm_entries=arm_entries))),
                        ]
 
     # define the default arm
@@ -71,7 +75,7 @@ def test_LinearArms(d, seed):
             assert linear_arms._arm_entries.keys() == arm_entries.keys()
 
             for vals, vals_ref in zip(linear_arms._arm_entries.values(),
-                                    arm_entries.values()):
+                                      arm_entries.values()):
                 np.testing.assert_array_equal(vals, vals_ref)
 
         # check identical K

@@ -86,7 +86,7 @@ class LinearArms:
 
             x0 = np.zeros(self.d)
             bounds = [(np.min(entry_vals), np.max(entry_vals))
-                        for entry_vals in self._arm_entries.values()]
+                      for entry_vals in self._arm_entries.values()]
 
             res = optimize.minimize(fun=f, jac=grad, x0=x0, method='L-BFGS-B',
                                     bounds=bounds)
