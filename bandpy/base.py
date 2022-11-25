@@ -14,8 +14,13 @@ class BanditEnv():
         """Init."""
         self.T = T
         self.t = 1
+
         self.seed = seed
         self.rng = check_random_state(self.seed)
+
+        self.r_t = dict()
+        self.s_t = dict()
+        self.R_t = dict()
         self.S_t = dict()
         self.best_S_t = dict()
         self.worst_S_t = dict()
@@ -58,55 +63,89 @@ class BanditEnv():
         self.t += 1
 
         done = False
-        if self.T <= self.t:
+        if self.T < self.t:
             done = True
 
         return observations, rewards, done, info
 
-    def update_agent_total_rewards(self, name_agent, r):
-        """Update S_t = sum_{s=1}^t r_s."""
+    def update_agent_total_rewards(self, name_agent, y):
+        """Update
+            r_t = [y_max - y_0, ..., y_max - y_t]
+            R_t = sum_{s=1}^t y_max - y_s
+
+            s_t = [y_0, ...., y_t]
+            S_t = sum_{s=1}^t y_s
+
+            best_S_t = sum_{s=1}^t y_max
+            worst_S_t = sum_{s=1}^t y_min
+
+        for the given agent."""
+
         theta_idx = self.theta_per_agent[name_agent]
+
+        y_max = self.best_reward[theta_idx]
+        y_min = self.worst_reward[theta_idx]
+
         if name_agent in self.S_t:
-            self.S_t[name_agent] += r
-            self.best_S_t[name_agent] += self.best_reward[theta_idx]
-            self.worst_S_t[name_agent] += self.worst_reward[theta_idx]
-        else:
-            self.S_t[name_agent] = r
-            self.best_S_t[name_agent] = self.best_reward[theta_idx]
-            self.worst_S_t[name_agent] = self.worst_reward[theta_idx]
+            self.r_t[name_agent].append(y_max - y)
+            self.s_t[name_agent].append(y)
 
-    def regret(self):
-        """Expected regret."""
-        if isinstance(self.best_reward, dict):
-            name_agents = self.S_t.keys()
-            regrets = []
-            for name_agent in name_agents:
-                theta_idx = self.theta_per_agent[name_agent]
-                regret_ = self.best_reward[theta_idx]
-                regret_ -= self.S_t[name_agent] / self.t
-                regrets.append(regret_)
+            self.R_t[name_agent] += y_max - y
+            self.S_t[name_agent] += y
+
+            self.best_S_t[name_agent] += y_max
+            self.worst_S_t[name_agent] += y_min
 
         else:
-            name_agents = self.S_t.keys()
-            S_t = np.array(list(self.S_t.values()), dtype=float)
-            regrets = self.best_reward - S_t / self.t
+            self.r_t[name_agent] = [y_max - y]
+            self.s_t[name_agent] = [y]
 
-        return dict(zip(name_agents, regrets))
+            self.R_t[name_agent] = y_max - y
+            self.S_t[name_agent] = y
 
-    def mean_regret(self):
-        """Return the network averaged regret."""
-        return np.mean(list(self.regret().values()))
+            self.best_S_t[name_agent] = y_max
+            self.worst_S_t[name_agent] = y_min
 
-    def mean_reward(self):
-        """Return the network averaged cumulative reward."""
+    def instantaneous_reward(self):
+        """Return the instantaneous reward for each agent (dict of list)."""
+        return self.s_t
+
+    def instantaneous_regret(self):
+        """Return the instantaneous regret for each agent (dict of list)."""
+        return self.r_t
+
+    def cumulative_reward(self):
+        """Return the cumulative reward for each agent (dict of float)."""
+        return self.S_t
+
+    def cumulative_regret(self):
+        """Return the cumulative regret for each agent (dict of float)."""
+        return self.R_t
+
+    def mean_instantaneous_reward(self):
+        """Return the averaged (on the network) instantaneous reward (array).
+        """
+        return np.mean(np.r_[list(self.s_t.values())], axis=0)
+
+    def mean_instantaneous_regret(self):
+        """Return the averaged (on the network) instantaneous regret (array).
+        """
+        return np.mean(np.r_[list(self.r_t.values())], axis=0)
+
+    def mean_cumulative_regret(self):
+        """Return the averaged (on the network) cumulative regret (float)."""
+        return np.mean(list(self.R_t.values()))
+
+    def mean_cumulative_reward(self):
+        """Return the network averaged cumulative reward (float)."""
         return np.mean(list(self.S_t.values()))
 
-    def mean_best_reward(self):
-        """Return the network averaged best cumulative reward."""
+    def mean_cumulative_best_reward(self):
+        """Return the network averaged best cumulative reward (float)."""
         return np.mean(list(self.best_S_t.values()))
 
-    def mean_worst_reward(self):
-        """Return the network averaged worst cumulative reward."""
+    def mean_cumulative_worst_reward(self):
+        """Return the network averaged worst cumulative reward (float)."""
         return np.mean(list(self.worst_S_t.values()))
 
 
