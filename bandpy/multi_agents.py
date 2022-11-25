@@ -6,8 +6,10 @@ from scipy import optimize
 
 from .base import MultiLinearAgents
 from .criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
-from .arms import LinearArms
+from .arms import LinearArms, _select_default_arm
+from .checks import check_random_state
 from .utils import _fast_inv_sherman_morrison
+from .__init__ import MAX_K
 
 
 class LinUniform(MultiLinearAgents):
@@ -19,14 +21,42 @@ class LinUniform(MultiLinearAgents):
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
-    def select_0th_arm(self):
-        """Select the first arm."""
-        return 0
+    def __init__(self, arms=None, arm_entries=None, seed=None):
+        """Init."""
+        if arms is not None:
+            self.arms = arms
+            self.arm_entries = None
+            self.K = len(self.arms)
+
+        elif arm_entries is not None:
+            self.arms = None
+            self.arm_entries = arm_entries
+            log10_K = np.sum([np.log10(len(entry_vals))
+                              for entry_vals in arm_entries.values()])
+            self.K = int(10**log10_K) if log10_K <= np.log10(MAX_K) else np.inf
+
+        else:
+            raise ValueError("To init 'LinUCB' class, either pass 'arms'"
+                             " and 'arm_entries', none of them was given.")
+
+        self.rng = check_random_state(seed)
+
+    def select_default_arm(self):
+        """Select the 'default arm'."""
+        return _select_default_arm(arm_entries=self.arm_entries)
 
     def act(self, observation, reward):
         """Select an arm."""
         self._update_all_statistics(observation, reward)
-        return self.randomly_select_arm()
+
+        if self.arms is not None:
+            return self.rng.randint(self.K)
+
+        else:
+            random_arm = []
+            for entry_vals in self.arm_entries.values():
+                random_arm.append(self.rng.choose(entry_vals))
+            return np.array(random_arm)
 
 
 class LinUCB(MultiLinearAgents):
@@ -40,39 +70,38 @@ class LinUCB(MultiLinearAgents):
         or random-seed used to initialize the random-instance
     """
 
-    def __init__(self, alpha, arms=None, arm_entries=None, lbda=1.0, te=10,
-                 greedy_selection=False, return_arm_index=False, seed=None):
+    def __init__(self, alpha, arms=None, arm_entries=None,
+                 lbda=1.0, te=10, seed=None):
         """Init."""
         # Check arms and arm_entries and get d
         if arms is not None:
-            self.d = arms[0].shape[0]
+            d = arms[0].shape[0]
 
         elif arm_entries is not None:
-            self.d = len(arm_entries)
+            d = len(arm_entries)
 
         else:
             raise ValueError("To init 'LinUCB' class, either pass 'arms'"
                              " and 'arm_entries', none of them was given.")
 
         # init internal variables (inv_A, A, ...)
-        super().__init__(d=self.d, lbda=lbda, te=te, seed=seed)
+        super().__init__(d=d, lbda=lbda, te=te, seed=seed)
 
         # init internal arms class
-        criterion_kwargs = dict(alpha=alpha, inv_A=self.inv_A)
-        criterion_grad_kwargs = dict(alpha=alpha, inv_A=self.inv_A)
+        criterion_kwargs = dict(alpha=alpha, inv_A=self.inv_A_local)
+        criterion_grad_kwargs = dict(alpha=alpha, inv_A=self.inv_A_local)
         self.arms = LinearArms(criterion_func=f_neg_ucb,
                                criterion_kwargs=criterion_kwargs,
                                criterion_grad=grad_neg_ucb,
                                criterion_grad_kwargs=criterion_grad_kwargs,
-                               arms=arms, arm_entries=arm_entries,
-                               return_arm_index=return_arm_index)
+                               arms=arms, arm_entries=arm_entries)
 
         # init last variables
         self.alpha = alpha
         self.K = self.arms.K
 
     def select_default_arm(self):
-        """Select the first arm."""
+        """Select the 'default arm'."""
         return self.arms.select_default_arm()
 
     def act(self, observation, reward):
@@ -80,12 +109,12 @@ class LinUCB(MultiLinearAgents):
 
         self._update_all_statistics(observation, reward)
 
-        criterion_kwargs = dict(alpha=self.alpha, inv_A=self.inv_A)
-        criterion_grad_kwargs = dict(alpha=self.alpha, inv_A=self.inv_A)
+        kwargs = dict(alpha=self.alpha, inv_A=self.inv_A_local)
 
         selected_k_or_arm = self.arms.select_arm(
-                            self.theta_hat, criterion_kwargs=criterion_kwargs,
-                            criterion_grad_kwargs=criterion_grad_kwargs)
+                                self.theta_hat_local,
+                                criterion_kwargs=kwargs,
+                                criterion_grad_kwargs=kwargs)
 
         return selected_k_or_arm
 
@@ -209,7 +238,8 @@ class GreedyLinGapE(MultiLinearAgents):
             jj = []
             for x_k in self.arms:
                 x_k = x_k.reshape((self.d, 1))
-                jj.append(_f_ucb(x_k - x_i, C, self.theta_hat, self.inv_A))
+                jj.append(_f_ucb(x_k - x_i, C, self.theta_hat_local,
+                                 self.inv_A_local))
             j = np.argmax(jj)
             x_j = self.arms[j].reshape((self.d, 1))
             B = np.max(jj)
@@ -223,7 +253,7 @@ class GreedyLinGapE(MultiLinearAgents):
             aa = []
             for x_k in self.arms:
                 x_k = x_k.reshape((self.d, 1))
-                inv_A_x_k = _fast_inv_sherman_morrison(self.inv_A, x_k)
+                inv_A_x_k = _fast_inv_sherman_morrison(self.inv_A_local, x_k)
                 gap_ij = x_i - x_j
                 a = np.sqrt(gap_ij.T.dot(inv_A_x_k).dot(gap_ij))
                 aa.append(float(a))

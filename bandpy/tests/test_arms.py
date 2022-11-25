@@ -36,29 +36,12 @@ def test_LinearArms(d, seed):
                        criterion_grad=grad_neg_ucb,
                        criterion_grad_kwargs=criterion_grad_kwargs)
 
-    # define the linear_arms with different but equivalent init
-    param_grid = dict(arms=[arms],
-                      arm_entries=[None],
-                      return_arm_index=[True, False],
-                      )
-
-    list_of_params = convert_grid_to_list(param_grid)
-
-    all_linear_arms = []
-    for params in list_of_params:
-        all_linear_arms.append(LinearArms(**dict(**params_base, **params)))
-
-    param_grid = dict(arms=[None],
-                      arm_entries=[arm_entries],
-                      return_arm_index=[True, False],
-                      )
-
-    list_of_params = convert_grid_to_list(param_grid)
-
-    for params in list_of_params:
-        all_linear_arms.append(LinearArms(**dict(**params_base, **params)))
+    all_linear_arms = [LinearArms(**dict(**params_base, **dict(arms=arms, arm_entries=None))),
+                       LinearArms(**dict(**params_base, **dict(arms=None, arm_entries=arm_entries))),
+                       ]
 
     # define the default arm
+    default_k = 0
     default_arm = np.array([np.min(val_entries)
                             for val_entries in arm_entries.values()])
 
@@ -79,16 +62,17 @@ def test_LinearArms(d, seed):
     # test all the 'linear_arms'
     for linear_arms in all_linear_arms:
 
-        # check identical arm_entries
-        assert linear_arms._arm_entries.keys() == arm_entries.keys()
+        # check identical arm_entries or identical arms
+        if linear_arms.return_arm_index:
+            for arm, arm_ref in zip(linear_arms._arms, arms):
+                np.testing.assert_array_equal(arm, arm_ref)
 
-        for vals, vals_ref in zip(linear_arms._arm_entries.values(),
-                                  arm_entries.values()):
-            np.testing.assert_array_equal(vals, vals_ref)
+        else:
+            assert linear_arms._arm_entries.keys() == arm_entries.keys()
 
-        # check identical arms
-        for arm, arm_ref in zip(linear_arms._arms, arms):
-            np.testing.assert_array_equal(arm, arm_ref)
+            for vals, vals_ref in zip(linear_arms._arm_entries.values(),
+                                    arm_entries.values()):
+                np.testing.assert_array_equal(vals, vals_ref)
 
         # check identical K
         assert linear_arms.K == K
@@ -106,7 +90,7 @@ def test_LinearArms(d, seed):
 
         # check agreement on the default arm
         if linear_arms.return_arm_index:
-            assert linear_arms.select_default_arm() == 0
+            assert linear_arms.select_default_arm() == default_k
 
         else:
             np.testing.assert_array_equal(linear_arms.select_default_arm(),
