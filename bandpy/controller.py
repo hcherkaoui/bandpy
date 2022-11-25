@@ -5,9 +5,10 @@ import itertools
 import numpy as np
 from scipy import optimize
 import networkx as nx
+
 from .base import Controller
-from .agents import MultiAgents, LinUCB
-from .utils import check_random_state, check_N_and_agent_names
+from .multi_agents import MultiLinearAgents, LinUCB
+from .checks import check_random_state, check_N_and_agent_names
 
 
 class DecentralizedController(Controller):
@@ -518,7 +519,7 @@ class DynUCB():
         self.N = N
         self.agents = dict()
         for n in range(self.N):
-            self.agents[f"agent_{n}"] = MultiAgents(arms=arms)
+            self.agents[f"agent_{n}"] = MultiLinearAgents(arms=arms)
 
         # clusters variables
         self.n_clusters = n_clusters
@@ -557,22 +558,6 @@ class DynUCB():
             cluster_thetas[m] = inv_A.dot(b)
             cluster_inv_A[m] = inv_A
         return cluster_thetas, cluster_inv_A
-
-    def init_act_randomly(self):
-        """ Make each agent pulls randomly an arm to initiliaze the simulation.
-        """
-        actions = dict()
-        for agent_name, agent in self.agents.items():
-            actions[agent_name] = agent.randomly_select_arm()
-        return actions
-
-    def init_act(self, k=0):
-        """ Make each agent pulls randomly an arm to initiliaze the simulation.
-        """
-        actions = dict()
-        for agent_name, agent in self.agents.items():
-            actions[agent_name] = k  # select the k-th arm for all agents
-        return actions
 
     @property
     def best_arms(self):
