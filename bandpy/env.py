@@ -3,9 +3,12 @@
 
 import collections
 import numpy as np
+
 from .base import BanditEnv
 from .loaders import movie_lens_loader, yahoo_loader
-from .utils import check_random_state
+from .utils import generate_gaussian_arms
+from .checks import check_random_state, check_K_arms_arm_entries
+from .__init__ import MAX_K
 
 
 DEFAULT_DIR_DATASET_MOVIELENS = ("/mnt/c/Users/hwx1143141/Desktop/datasets/"
@@ -236,15 +239,16 @@ class ClusteredGaussianLinearBandit(BanditEnv):
     sigma : float, standard deviation of the noise.
     """
 
-    def __init__(self, N, T, d, K=None, n_thetas=None, arms=None, thetas=None,
-                 sigma=1.0, theta_offset=0.0, shuffle_labels=True, seed=None):
+    def __init__(self, N, T, d, K=None, arms=None, arm_entries=None,
+                 n_thetas=None, thetas=None, sigma=1.0, theta_offset=0.0,
+                 shuffle_labels=True, seed=None):
         """Init."""
 
         if (n_thetas is None) and (thetas is None):
             raise ValueError("'n_thetas' and 'thetas' should not be both set "
                              "to None simultaneously.")
 
-        if (arms is None) and (K is None):
+        if (arms is None) and (K is None) and (arm_entries is None):
             raise ValueError("'K' and 'arms' should not be both set "
                              "to None simultaneously.")
 
@@ -258,16 +262,27 @@ class ClusteredGaussianLinearBandit(BanditEnv):
 
         self.rng = check_random_state(seed)
 
-        if arms is None:
-            self.arms = []
-            for _ in range(K):
-                self.arms.append(self.rng.randn(d))
+        # XXX for now if the 'arms setting' is specified only with
+        # 'arm_entries' then the self.best_arm, self.best_reward and
+        # self.worst_reward computation will failed
+        arms, arm_entries, K = check_K_arms_arm_entries(
+                                    arms=arms, arm_entries=arm_entries, K=K)
+
+        if (arms is None) and (K is not None):
+            self.arms = generate_gaussian_arms(K, d, seed=self.rng)
 
         else:
             self.arms = arms
-            K = len(self.arms)
 
+        self.arm_entries = arm_entries
+        self.K = len(self.arms)
+
+        self.arm_entries = None
         self.K = K
+
+        if self.K > MAX_K:
+            raise ValueError(f"The required number of arms (K={self.K}) "
+                             f"exceed the maximum authorized {MAX_K}.")
 
         if thetas is None:
             self.thetas = []
@@ -283,20 +298,19 @@ class ClusteredGaussianLinearBandit(BanditEnv):
         self.theta_per_agent = dict()
         self._assign_agent_models()
 
-        self.K = len(self.arms)
-
         self.sigma = sigma
 
         # deactivate best_arm / best_reward
         self.best_arm = dict()
-        self.best_reward, self.worst_reward = dict(), dict()
+        self.best_reward = dict()
+        self.worst_reward = dict()
         for i, theta in enumerate(self.thetas):
-            self.best_reward[i] = np.max([theta.dot(arm)
-                                          for arm in self.arms])
-            self.worst_reward[i] = np.min([theta.dot(arm)
-                                           for arm in self.arms])
-            self.best_arm[i] = np.argmax([theta.dot(arm)
-                                          for arm in self.arms])
+
+            all_rewards = [theta.dot(arm) for arm in self.arms]
+
+            self.best_reward[i] = np.max(all_rewards)
+            self.worst_reward[i] = np.min(all_rewards)
+            self.best_arm[i] = np.argmax(all_rewards)
 
         super().__init__(T=T, seed=self.rng)
 
@@ -313,9 +327,15 @@ class ClusteredGaussianLinearBandit(BanditEnv):
         for i, theta_i in enumerate(theta_idx):
             self.theta_per_agent[f"agent_{i}"] = theta_i
 
-    def compute_reward(self, agent_name, k):
+    def compute_reward(self, agent_name, k_or_arm):
+        """Compute the reward associated to the given arm or arm-index."""
 
-        x_k = self.arms[k].reshape((self.d, 1))
+        if isinstance(k_or_arm, (int, np.integer)):
+            x_k = self.arms[k_or_arm].reshape((self.d, 1))
+
+        else:
+            x_k = k_or_arm.reshape((self.d, 1))
+
         theta = self.thetas[self.theta_per_agent[agent_name]]
 
         r = float(x_k.T.dot(theta))
