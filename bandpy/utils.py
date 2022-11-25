@@ -1,4 +1,4 @@
-""" Define all check utility functions in Bandpy. """
+""" Define all misc utility functions in Bandpy. """
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import cProfile
@@ -6,67 +6,10 @@ import itertools
 import numpy as np
 import pandas as pd
 from joblib import Memory
+import numba
 from matrix_factorization import KernelMF
 
-
-def check_N_and_agent_names(N, agent_names):
-    """ Check N and 'agent_names'."""
-
-    if (N is None) and (agent_names is None):
-        raise ValueError("Number of agents N and 'agent_names' can't be "
-                         "both set to None.")
-
-    elif (N is not None) and (agent_names is None):
-        return N, [f'agent_{i}' for i in range(N)]
-
-    elif (N is None) and (agent_names is not None):
-        return len(agent_names), agent_names
-
-    else:
-        if N != len(agent_names):
-            raise ValueError(f"Number of agents N and number of agents in"
-                             f" 'agent_names' should be equal,"
-                             f" got {N} and {len(agent_names)}.")
-
-        else:
-            return N, agent_names
-
-
-def check_random_state(seed):
-    """Turn seed into a np.random.RandomState instance.
-    Parameters
-    ----------
-    seed : None, int, random-instance, (default=None), random-instance
-        or random-seed used to initialize the random-instance
-    Return
-    ------
-    random_instance : random-instance used to initialize the analysis
-    """
-    if seed is None or seed is np.random:
-        return np.random.mtrand._rand
-    if isinstance(seed, (int, np.integer)):
-        return np.random.RandomState(seed)
-    if isinstance(seed, np.random.RandomState):
-        return seed
-    raise ValueError(f"{seed} cannot be used to seed a "
-                     f"numpy.random.RandomState instance")
-
-
-def check_actions(actions):
-    """ Check if the 'actions' are properly formatted."""
-    if not isinstance(actions, dict):
-        raise ValueError(f"'actions' should be a dict, got {type(actions)}")
-
-    for agent_name, action in actions.items():
-        if not isinstance(agent_name, str):
-            raise ValueError(f"Agent name should be str, got "
-                             f"{type(agent_name)}")
-
-        if not isinstance(action, (int, np.integer)):
-            raise ValueError(f"Action for agent '{agent_name}' should be type"
-                             f" int, got {type(action)}")
-
-    return actions
+from .checks import check_random_state
 
 
 def tolerant_stats(arrs):
@@ -87,6 +30,14 @@ def tolerant_stats(arrs):
                ]
 
     return results
+
+
+@numba.jit((numba.float64[:, :], numba.float64[:, :]), nopython=True,
+           cache=True, fastmath=True)
+def _fast_inv_sherman_morrison(inv_A, x):  # pragma: no cover
+    """Sherman-Morrison identity to compute the inverse of A + xxT."""
+    inv_A_x = inv_A.dot(x)
+    return inv_A - inv_A_x.dot(x.T.dot(inv_A)) / (1.0 + x.T.dot(inv_A_x))
 
 
 def _fill_mising_values(data, K, col_name=None):
@@ -147,3 +98,56 @@ def convert_grid_to_list(grid):
     """ Convert a dict of list (grid) to a list of dict (combination)."""
     combs = itertools.product(*grid.values())
     return [dict(zip(grid.keys(), p)) for p in combs]
+
+
+def arms_to_arm_entries(arms):
+    """Convert 'arms' to 'arm_entries'."""
+    arm_entries = dict()
+    for i, entry_vals in enumerate(zip(*arms)):
+        arm_entries[f"p_{i}"] = np.sort(np.unique(entry_vals))
+    return arm_entries
+
+
+def arm_entries_to_arms(arm_entries):
+    """Convert 'arm_entries' to 'arms'."""
+    combs = itertools.product(*arm_entries.values())
+    return [np.array(p).reshape((len(p), 1)) for p in combs]
+
+
+def proj_on_arm_entries(x, arm_entries):
+    """Project a vector on a discretize grid specified by 'arm_entries'."""
+    proj_x = []
+    for i, entry_vals in enumerate(arm_entries.values()):
+
+        dist_ = np.abs(x[i] - entry_vals)
+        proj_x.append(entry_vals[np.argmin(dist_)])
+
+    return np.array(proj_x).reshape((len(proj_x), 1))
+
+
+def generate_gaussian_arms(K, d, seed=None):
+    """Generate Gaussian 'arms'."""
+    rng = check_random_state(seed)
+    return [rng.randn(d, 1) for _ in range(K)]
+
+
+def generate_gaussian_arm_entries(n_vals_per_dim, d, seed=None):
+    """Generate Gaussian 'arm_entries'."""
+    rng = check_random_state(seed)
+    arm_entries = dict()
+    for i in range(d):
+        arm_entries[f"p_{i}"] = np.sort(rng.randn(n_vals_per_dim))
+    return arm_entries
+
+
+def tests_set_up(d=2, seed=None):
+    """Synthetic set-up for the unittests."""
+    rng = check_random_state(seed)
+    set_up = dict()
+
+    set_up['inv_A'] = np.eye(d)
+    set_up['x_k'] = rng.randn(d, 1)
+    set_up['theta'] = rng.randn(d, 1)
+    set_up['alpha'] = 1.0
+
+    return set_up
