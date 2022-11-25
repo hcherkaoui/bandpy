@@ -28,25 +28,30 @@ class BanditEnv():
     def reset(self, seed=np.NaN):
         """Reset the environment (and the randomness if seed is not NaN)."""
         self.t = 1
+
         if not np.isnan(seed):
             self.seed = seed
             self.rng = check_random_state(self.seed)
+
+        self.r_t = dict()
+        self.s_t = dict()
+        self.R_t = dict()
         self.S_t = dict()
-        self.Best_S_t = dict()
-        self.Worst_S_t = dict()
+        self.best_S_t = dict()
+        self.worst_S_t = dict()
 
     def step(self, actions):
         """Pull the k-th arm chosen in 'actions'."""
         actions = check_actions(actions)
 
         observations, rewards = dict(), dict()
-        for name_agent, k in actions.items():
+        for name_agent, k_or_arm in actions.items():
 
-            r = self.compute_reward(name_agent, k)
+            r = self.compute_reward(name_agent, k_or_arm)
 
             self.update_agent_total_rewards(name_agent, r)
 
-            observation = {'last_arm_pulled': k,
+            observation = {'last_arm_pulled': k_or_arm,
                            'last_reward': r,
                            't': self.t,
                            }
@@ -54,8 +59,7 @@ class BanditEnv():
             observations[name_agent] = observation
             rewards[name_agent] = r
 
-        info = {'n_arms': self.K,
-                'best_arm': self.best_arm,
+        info = {'best_arm': self.best_arm,
                 'best_reward': self.best_reward,
                 'seed': self.seed,
                 }
