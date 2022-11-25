@@ -68,15 +68,15 @@ if __name__ == '__main__':
                                     n_thetas=1, sigma=args.sigma,
                                     shuffle_labels=False, seed=args.seed)
 
+    agent_cls = multi_agents.LinUCB
+    agent_kwargs = {'alpha': args.alpha,
+                    'arms': bandit_env.arms,
+                    'te': args.te,
+                    'seed': args.seed,
+                    }
+
     bandit_controller = controller.DecentralizedController(
-                            N=args.N,
-                            agent_cls=multi_agents.LinUCB,
-                            agent_kwargs={'alpha': args.alpha,
-                                          'arms': bandit_env.arms,
-                                          'te': args.te,
-                                          'return_arm_index': True,
-                                          'seed': args.seed},
-                                        )
+                    N=args.N, agent_cls=agent_cls, agent_kwargs=agent_kwargs)
 
     rng = utils.check_random_state(args.seed)
     seeds = rng.randint(MAX_RANDINT, size=args.n_trials)
