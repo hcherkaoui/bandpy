@@ -2,7 +2,9 @@
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import numpy as np
-from .utils import check_random_state, check_actions
+
+from .utils import _fast_inv_sherman_morrison
+from .checks import check_random_state, check_actions
 
 
 class BanditEnv():
@@ -133,21 +135,115 @@ class Controller:
             best_arms[agent_name] = agent.best_arm
         return best_arms
 
-    def init_act_randomly(self):
-        """ Make each agent pulls randomly an arm to initiliaze the simulation.
-        """
+    def default_act(self):
+        """ Make each agent pulls 'default' arm to init the simulation."""
         actions = dict()
         for agent_name, agent in self.agents.items():
-            actions[agent_name] = agent.randomly_select_arm()
+            actions[agent_name] = self.agents[agent_name].select_default_arm()
         return actions
 
-    def init_act(self, k=0):
-        """ Make each agent pulls randomly an arm to initiliaze the simulation.
-        """
-        actions = dict()
-        for agent_name, agent in self.agents.items():
-            actions[agent_name] = k  # select the k-th arm for all agents
-        return actions
+
+class MultiLinearAgents:
+    """Agent that handle a multi-agents setting and the sharing of observation
+    while keeping a local estimation up to day.
+
+    Parameters
+    ----------
+    arms : list of np.array, list of arms.
+    seed : None, int, random-instance, (default=None), random-instance
+        or random-seed used to initialize the random-instance
+    """
+    def __init__(self, d, lbda=1.0, te=10, seed=None):
+        """Init."""
+        self.d = d
+
+        self.te = te  # frequencie of exacte inv_A computation
+
+        self.lbda = lbda
+
+        # shared variables
+        self.A = np.eye(self.d)
+        self.b = np.zeros((self.d, 1))
+        self.inv_A = np.eye(self.d) / lbda
+        self.theta_hat = np.zeros((self.d, 1))
+
+        # local variables
+        self.A_local = lbda * np.eye(self.d)
+        self.b_local = np.zeros((self.d, 1))
+        self.inv_A_local = np.eye(self.d) / lbda
+        self.theta_hat_local = np.zeros((self.d, 1))
+
+        self.rng = check_random_state(seed)
+
+    def _update_inv_A_A_b_shared(self, last_k_or_arm, last_r, t):
+        """Update A and b from observation."""
+        inv_A_exact = t % self.te == 0
+
+        for last_k_or_arm_, last_r_ in zip(last_k_or_arm, last_r):
+
+            if isinstance(last_k_or_arm_, (int, np.integer)):
+                arm_ = self.arms._arms[last_k_or_arm_]
+                last_x_k_ = arm_.reshape((self.d, 1))
+
+            else:
+                last_x_k_ = last_k_or_arm_.reshape((self.d, 1))
+
+            self.A += last_x_k_.dot(last_x_k_.T)
+            self.b += last_x_k_ * last_r_
+            if not inv_A_exact:
+                self.inv_A = _fast_inv_sherman_morrison(self.inv_A, last_x_k_)
+
+        if inv_A_exact:
+            self.inv_A = np.linalg.inv(self.A)
+
+    def _update_inv_A_A_b_local(self, last_k_or_arm, last_r, t):
+        """Update A and b from observation."""
+        inv_A_exact = t % self.te == 0
+
+        self.A_local_update = np.zeros((self.d, self.d))
+        self.b_local_update = np.zeros((self.d, 1))
+
+        if isinstance(last_k_or_arm, (int, np.integer)):
+            last_x_k = self.arms._arms[last_k_or_arm].reshape((self.d, 1))
+
+        else:
+            last_x_k = last_k_or_arm.reshape((self.d, 1))
+
+        self.A_local += last_x_k.dot(last_x_k.T)
+        self.b_local += last_x_k * last_r
+
+        if not inv_A_exact:
+            inv_A_ = _fast_inv_sherman_morrison(self.inv_A_local, last_x_k)
+            self.inv_A_local = inv_A_
+        else:
+            self.inv_A_local = np.linalg.inv(self.A_local)
+
+    def _update_all_statistics(self, observation, reward):
+        """Update all statistics (local and shared). """
+        # fetch and rename main variables
+        last_k_or_arm = observation['last_arm_pulled']
+        last_r = reward
+        t = observation['t']
+
+        if isinstance(last_k_or_arm, tuple) and isinstance(last_r, tuple):
+            last_k_or_arm_local, last_k_or_arm_shared = last_k_or_arm
+            last_r_local, last_r_shared = last_r
+            self._update_inv_A_A_b_shared(last_k_or_arm_shared, last_r_shared,
+                                          t)
+            self._update_inv_A_A_b_local(last_k_or_arm_local, last_r_local, t)
+
+        else:
+            self._update_inv_A_A_b_shared([last_k_or_arm], [last_r], t)
+            self._update_inv_A_A_b_local(last_k_or_arm, last_r, t)
+
+        self.theta_hat = self.inv_A.dot(self.b)
+        self.theta_hat_local = self.inv_A_local.dot(self.b_local)
+
+    @property
+    def best_arm(self):
+        """Return the estimated best arm if the estimation is avalaible, None
+        if not."""
+        return self.arms.best_arm(self.theta_hat)
 
 
 class Agent:
