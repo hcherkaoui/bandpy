@@ -52,7 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-jobs', type=int, default=1,
                         help='Number of jobs to run in parallel the trials.')
     parser.add_argument('--fig-fname', type=str,
-                        default='regret_and_reward_evolution.pdf',
+                        default='r__cum_r_evo.pdf',
                         help='Figure filename.')
     parser.add_argument('--verbose', action='store_true',
                         help='Verbosity level.')
@@ -64,9 +64,10 @@ if __name__ == '__main__':
         print("[main] Setting simulation.")
 
     bandit_env = env.ClusteredGaussianLinearBandit(
-                                    N=args.N, T=args.T, d=args.d, K=args.K,
-                                    n_thetas=1, sigma=args.sigma,
-                                    shuffle_labels=False, seed=args.seed)
+                                        N=args.N, T=args.T, d=args.d,
+                                        K=args.K,
+                                        n_thetas=1, sigma=args.sigma,
+                                        shuffle_labels=False, seed=args.seed)
 
     agent_cls = multi_agents.LinUCB
     agent_kwargs = {'alpha': args.alpha,
