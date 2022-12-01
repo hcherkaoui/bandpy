@@ -5,7 +5,7 @@ import re
 import pytest
 import numpy as np
 from bandpy.utils import (_fast_inv_sherman_morrison, convert_grid_to_list,
-                          generate_gaussian_arms,
+                          _generate_list_of_nd_array,
                           generate_gaussian_arm_entries,
                           arms_to_arm_entries, arm_entries_to_arms,
                           proj_on_arm_entries, tests_set_up)
@@ -43,14 +43,14 @@ def test_convert_grid_to_list():
 
 @pytest.mark.parametrize('d', [2, 10])
 @pytest.mark.parametrize('seed', [0, 1])
-def test_generate_gaussian_arms(d, seed):
+def test__generate_list_of_nd_array(d, seed):
     """Test generate_gaussian_arms."""
     K = 5
-    arms = generate_gaussian_arms(K, d, seed=seed)
+    list_arrays = _generate_list_of_nd_array(K, d, seed=seed)
 
-    assert isinstance(arms, list)
-    assert len(arms) == K
-    for arm in arms:
+    assert isinstance(list_arrays, list)
+    assert len(list_arrays) == K
+    for arm in list_arrays:
         assert (d, 1) == arm.shape
 
 

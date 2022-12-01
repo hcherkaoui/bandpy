@@ -3,7 +3,7 @@
 
 import pytest
 import numpy as np
-from bandpy.utils import check_random_state
+from bandpy.checks import check_random_state
 
 
 @pytest.mark.parametrize('seed', [0, 1])
