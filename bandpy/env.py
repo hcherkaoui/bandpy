@@ -3,12 +3,13 @@
 
 import collections
 import numpy as np
+from scipy import optimize
 
 from .base import BanditEnv
 from .loaders import movie_lens_loader, yahoo_loader
-from .utils import generate_gaussian_arms
-from .checks import check_random_state, check_K_arms_arm_entries
-from .__init__ import MAX_K
+from .checks import (check_random_state, check_K_arms_arm_entries,
+                     check_thetas_and_n_thetas)
+from .criterions import f_neg_scalar_prod, grad_neg_scalar_prod
 
 
 DEFAULT_DIR_DATASET_MOVIELENS = ("/mnt/c/Users/hwx1143141/Desktop/datasets/"
@@ -179,50 +180,6 @@ class RandomLinearBandit(LinearBandit):
         super().__init__(T=T, arms=arms, theta=theta, sigma=sigma, seed=rng)
 
 
-class CanonicalLinearBandit(LinearBandit):
-    """'LinearBandit' class to define a Linear Bandit in dimension 'd' with d+1
-    arms ([1, 0, 0, ...], [0, 1, 0, ...], [cos(delta), sin(delta), ...]) with
-    delta in ]0.0, pi[ and theta = [2, 0, ...]. The reward is defined as
-    'r = theta.T.dot(x_k) + noise' with noise drawn from a centered Gaussian
-    distribution.
-
-    Parameters
-    ----------
-    T : int, the iteration finite horizon.
-    d : int, dimension of the problem.
-    delta : float, default=0.01, angle for the third arm (supposed to be closed
-        to the optimal arm x_2)
-    sigma : float, standard deviation of the noise.
-    """
-    def __init__(self, T, d, delta, sigma=1.0, seed=None):
-        """Init."""
-
-        if d < 2:
-            raise ValueError(f"Dimendion 'd' should be >=2, got {d}")
-
-        if not ((delta > 0.0) and (delta < np.pi)):
-            raise ValueError(f"delta should belongs to ]0.0, pi[, "
-                             f"got {delta}")
-
-        self.d = d
-
-        arms = []
-        for i in range(self.d):
-            x_ = np.zeros((self.d, 1))
-            x_[i] = 1.0
-            arms.append(x_)
-
-        nearly_opt_x_k = np.zeros((self.d, 1))
-        nearly_opt_x_k[0] = np.cos(delta)
-        nearly_opt_x_k[1] = np.sin(delta)
-        arms.append(np.array(nearly_opt_x_k))
-
-        theta = np.zeros((self.d, 1))
-        theta[0] = 2.0
-
-        super().__init__(T=T, arms=arms, theta=theta, sigma=sigma, seed=seed)
-
-
 class ClusteredGaussianLinearBandit(BanditEnv):
     """'ClusteredGaussianLinearBandit' class to define a Linear Bandit in
     dimension 'd'. The arms and the theta are drawn following a Gaussian. The
@@ -231,72 +188,53 @@ class ClusteredGaussianLinearBandit(BanditEnv):
 
     Parameters
     ----------
+    N :
     T : int, the iteration finite horizon.
     d : int, dimension of the problem.
-    delta : float, default=0.01, angle for the third arm (supposed to be closed
-        to the optimal arm x_2)
+    K :
+    arms :
+    arm_entries :
     n_thetas : int, number of theta for the model.
+    thetas :
     sigma : float, standard deviation of the noise.
+    theta_offset :
+    shuffle_labels :
+    seed :
     """
 
     def __init__(self, N, T, d, K=None, arms=None, arm_entries=None,
                  n_thetas=None, thetas=None, sigma=1.0, theta_offset=0.0,
                  shuffle_labels=True, seed=None):
         """Init."""
-
-        if (n_thetas is None) and (thetas is None):
-            raise ValueError("'n_thetas' and 'thetas' should not be both set "
-                             "to None simultaneously.")
-
-        if (arms is None) and (K is None) and (arm_entries is None):
-            raise ValueError("'K' and 'arms' should not be both set "
-                             "to None simultaneously.")
-
         if d < 2:
             raise ValueError(f"Dimendion 'd' should be >= 2, got {d}")
+
+        thetas, n_thetas = check_thetas_and_n_thetas(d=d, thetas=thetas,
+                                                     n_thetas=n_thetas,
+                                                     theta_offset=theta_offset,
+                                                     seed=seed)
+        self.thetas = thetas
+        self.n_thetas = n_thetas
+
+        parameters = check_K_arms_arm_entries(d=d,
+                                              arms=arms,
+                                              arm_entries=arm_entries,
+                                              K=K,
+                                              seed=seed)
+        return_arm_index, arms, arm_entries, K = parameters
+
+        self.return_arm_index = return_arm_index
+        self.arms = arms
+        self.arm_entries = arm_entries
+        self.K = K
 
         self.N = N
         self.d = d
 
         self.shuffle_labels = shuffle_labels
-
         self.rng = check_random_state(seed)
 
-        # XXX for now if the 'arms setting' is specified only with
-        # 'arm_entries' then the self.best_arm, self.best_reward and
-        # self.worst_reward computation will failed
-        arms, arm_entries, K = check_K_arms_arm_entries(
-                                    arms=arms, arm_entries=arm_entries, K=K)
-
-        if (arms is None) and (K is not None):
-            self.arms = generate_gaussian_arms(K, d, seed=self.rng)
-
-        else:
-            self.arms = arms
-
-        self.arm_entries = arm_entries
-        self.K = len(self.arms)
-
-        self.arm_entries = None
-        self.K = K
-
-        if self.K > MAX_K:
-            raise ValueError(f"The required number of arms (K={self.K}) "
-                             f"exceed the maximum authorized {MAX_K}.")
-
-        if thetas is None:
-            self.thetas = []
-            for _ in range(n_thetas):
-                self.thetas.append(self.rng.randn(d) + theta_offset)
-
-        else:
-            self.thetas = thetas
-            n_thetas = len(self.thetas)
-
-        self.n_thetas = n_thetas
-
-        self.theta_per_agent = dict()
-        self._assign_agent_models()
+        self.theta_per_agent = self._assign_agent_models()
 
         self.sigma = sigma
 
@@ -306,16 +244,50 @@ class ClusteredGaussianLinearBandit(BanditEnv):
         self.worst_reward = dict()
         for i, theta in enumerate(self.thetas):
 
-            all_rewards = [theta.dot(arm) for arm in self.arms]
+            if self.return_arm_index:
 
-            self.best_reward[i] = np.max(all_rewards)
-            self.worst_reward[i] = np.min(all_rewards)
-            self.best_arm[i] = np.argmax(all_rewards)
+                all_rewards = [theta.T.dot(arm) for arm in self.arms]
+
+                self.best_reward[i] = np.max(all_rewards)
+                self.worst_reward[i] = np.min(all_rewards)
+                self.best_arm[i] = np.argmax(all_rewards)
+
+            else:
+
+                def f(x):
+                    return f_neg_scalar_prod(x, theta)
+
+                def grad(x):
+                    return grad_neg_scalar_prod(x, theta)
+
+                x0 = np.zeros_like(theta)
+                bounds = [(np.min(entry_vals), np.max(entry_vals))
+                          for entry_vals in self.arm_entries.values()]
+
+                res = optimize.minimize(fun=f, jac=grad, x0=x0,
+                                        method='L-BFGS-B', bounds=bounds)
+                best_reward_ = - res.fun
+                best_arm_ = res.x
+
+                def f(x):
+                    return - f_neg_scalar_prod(x, theta)
+
+                def grad(x):
+                    return - grad_neg_scalar_prod(x, theta)
+
+                res = optimize.minimize(fun=f, jac=grad, x0=x0,
+                                        method='L-BFGS-B', bounds=bounds)
+                worst_reward_ = res.fun
+
+                self.best_reward[i] = best_reward_
+                self.worst_reward[i] = worst_reward_
+                self.best_arm[i] = best_arm_
 
         super().__init__(T=T, seed=self.rng)
 
     def _assign_agent_models(self):
         """Assign a theta for each agent."""
+
         theta_idx = []  # [0 0 0 ... 1 1 ... 2 ... 2 2]
         for theta_i in range(self.n_thetas):
             theta_idx += [theta_i] * int(self.N / self.n_thetas)
@@ -324,8 +296,11 @@ class ClusteredGaussianLinearBandit(BanditEnv):
         if self.shuffle_labels:
             self.rng.shuffle(theta_idx)
 
+        theta_per_agent = dict()
         for i, theta_i in enumerate(theta_idx):
-            self.theta_per_agent[f"agent_{i}"] = theta_i
+            theta_per_agent[f"agent_{i}"] = theta_i
+
+        return theta_per_agent
 
     def compute_reward(self, agent_name, k_or_arm):
         """Compute the reward associated to the given arm or arm-index."""

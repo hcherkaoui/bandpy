@@ -22,6 +22,35 @@ def _select_default_arm(arm_entries=None):
         return np.array(arm_to_return)
 
 
+def _relax_select_arm(theta, arm_entries, func, criterion_kwargs,
+                      grad_func=None, criterion_grad_kwargs=None):
+    """Relaxed (continous) arm selection."""
+    def f(x):
+        return func(x, theta, **criterion_kwargs)
+
+    if (grad_func is not None) and (criterion_grad_kwargs is not None):
+        def grad(x):
+            return grad_func(x, theta, **criterion_grad_kwargs)
+
+    else:
+        grad = None
+
+    x0 = np.zeros_like(theta)
+    bounds = [(np.min(entry_vals), np.max(entry_vals))
+              for entry_vals in arm_entries.values()]
+
+    res = optimize.minimize(fun=f, jac=grad, x0=x0, method='L-BFGS-B',
+                            bounds=bounds)
+
+    return proj_on_arm_entries(res.x, arm_entries)
+
+
+def _greedy_select_arm(theta, arms, func, criterion_kwargs):
+    """Greedy (for loop) arm selection."""
+    uu = [func(x_k, theta, **criterion_kwargs) for x_k in arms]
+    return np.argmin(uu)
+
+
 class LinearArms:
     """Linear arms class."""
 
@@ -64,34 +93,19 @@ class LinearArms:
             raise ValueError("To init 'Arms' class, either pass 'arms'"
                              " and 'arm_entries', none of them was given.")
 
-    def _select_arm(self, theta, func, criterion_kwargs=None, grad_func=None,
+    def _select_arm(self, theta, func, criterion_kwargs, grad_func=None,
                     criterion_grad_kwargs=None):
         """Select an arm for the given criterion."""
         if self.return_arm_index:
-            uu = [func(x_k, theta, **criterion_kwargs)
-                  for x_k in self._arms]
-
-            return np.argmin(uu)
+            return _greedy_select_arm(theta=theta, arms=self._arms, func=func,
+                                      criterion_kwargs=criterion_kwargs)
 
         else:
-            def f(x):
-                return func(x, theta, **criterion_kwargs)
-
-            if (grad_func is not None) and (criterion_grad_kwargs is not None):
-                def grad(x):
-                    return grad_func(x, theta, **criterion_grad_kwargs)
-
-            else:
-                grad = None
-
-            x0 = np.zeros(self.d)
-            bounds = [(np.min(entry_vals), np.max(entry_vals))
-                      for entry_vals in self._arm_entries.values()]
-
-            res = optimize.minimize(fun=f, jac=grad, x0=x0, method='L-BFGS-B',
-                                    bounds=bounds)
-
-            return proj_on_arm_entries(res.x, self._arm_entries)
+            return _relax_select_arm(theta=theta,
+                                     arm_entries=self._arm_entries,
+                                     func=func, grad_func=grad_func,
+                                     criterion_kwargs=criterion_kwargs,
+                                     criterion_grad_kwargs=criterion_grad_kwargs)  # noqa
 
     def select_default_arm(self):
         """Return the selected arm with the lowest value for each coordinate

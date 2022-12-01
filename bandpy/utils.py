@@ -12,8 +12,8 @@ from matrix_factorization import KernelMF
 from .checks import check_random_state
 
 
-def tolerant_stats(arrs):
-    """Compute the means and stds of time-serie of different length."""
+def _tolerant_concat(arrs):
+    """Concatenate time-serie of different lengths."""
     n_arrs = len(arrs)
     all_lengths = [len(arr) for arr in arrs]
     concat_arr = np.ma.empty((np.max(all_lengths), n_arrs))
@@ -21,6 +21,20 @@ def tolerant_stats(arrs):
 
     for i, arr in enumerate(arrs):
         concat_arr[:len(arr), i] = arr
+
+    return concat_arr
+
+
+def tolerant_mean(arrs):
+    """Compute the mean of time-serie of different length."""
+    return _tolerant_concat(arrs).mean(axis=-1)
+
+
+def tolerant_stats(arrs):
+    """Compute the mean, std, max and min of time-serie of different length."""
+    all_lengths = [len(arr) for arr in arrs]
+
+    concat_arr = _tolerant_concat(arrs)
 
     results = [concat_arr.mean(axis=-1),
                concat_arr.std(axis=-1),
@@ -100,6 +114,19 @@ def convert_grid_to_list(grid):
     return [dict(zip(grid.keys(), p)) for p in combs]
 
 
+def get_d(arms=None, arm_entries=None):
+    """Get d from 'arms' and 'arm_entries' in a safe way."""
+    if arms is not None:
+        return arms[0].shape[0]
+
+    elif arm_entries is not None:
+        return len(arm_entries)
+
+    else:
+        raise ValueError("To init 'LinUCB' class, either pass 'arms'"
+                         " and 'arm_entries', none of them was given.")
+
+
 def arms_to_arm_entries(arms):
     """Convert 'arms' to 'arm_entries'."""
     arm_entries = dict()
@@ -122,13 +149,23 @@ def proj_on_arm_entries(x, arm_entries):
         dist_ = np.abs(x[i] - entry_vals)
         proj_x.append(entry_vals[np.argmin(dist_)])
 
-    return np.array(proj_x).reshape((len(proj_x), 1))
+    return np.array(proj_x, dtype=float).reshape((len(proj_x), 1))
 
 
-def generate_gaussian_arms(K, d, seed=None):
-    """Generate Gaussian 'arms'."""
+def _generate_list_of_nd_array(n, d, offset=0.0, seed=None):
     rng = check_random_state(seed)
-    return [rng.randn(d, 1) for _ in range(K)]
+    return [rng.randn(d, 1) + offset for _ in range(n)]
+
+
+def generate_gaussian_arms(K, d, seed=None):  # pragma: no cover
+    """Generate Gaussian 'arms'."""
+    return _generate_list_of_nd_array(n=K, d=d, offset=0.0, seed=seed)
+
+
+def generate_gaussian_thetas(n_thetas, d, theta_offset=0.0, seed=None):  # pragma: no cover  # noqa
+    """Generate Gaussian 'thetas'."""
+    return _generate_list_of_nd_array(n=n_thetas, d=d, offset=theta_offset,
+                                      seed=seed)
 
 
 def generate_gaussian_arm_entries(n_vals_per_dim, d, seed=None):

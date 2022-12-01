@@ -8,7 +8,7 @@ from .base import MultiLinearAgents
 from .criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
 from .arms import LinearArms, _select_default_arm
 from .checks import check_random_state
-from .utils import _fast_inv_sherman_morrison
+from .utils import _fast_inv_sherman_morrison, get_d
 from .__init__ import MAX_K
 
 
@@ -21,8 +21,15 @@ class LinUniform(MultiLinearAgents):
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
-    def __init__(self, arms=None, arm_entries=None, seed=None):
+    def __init__(self, arms=None, arm_entries=None, lbda=1.0, te=10,
+                 seed=None):
         """Init."""
+
+        d = get_d(arms=arms, arm_entries=arm_entries)
+
+        # init internal variables (inv_A, A, ...)
+        super().__init__(d=d, lbda=lbda, te=te, seed=seed)
+
         if arms is not None:
             self.arms = arms
             self.arm_entries = None
@@ -41,6 +48,8 @@ class LinUniform(MultiLinearAgents):
 
         self.rng = check_random_state(seed)
 
+        super().__init__(d=d, lbda=lbda, te=te, seed=seed)
+
     def select_default_arm(self):
         """Select the 'default arm'."""
         return _select_default_arm(arm_entries=self.arm_entries)
@@ -55,8 +64,8 @@ class LinUniform(MultiLinearAgents):
         else:
             random_arm = []
             for entry_vals in self.arm_entries.values():
-                random_arm.append(self.rng.choose(entry_vals))
-            return np.array(random_arm)
+                random_arm.append(self.rng.choice(entry_vals))
+            return np.array(random_arm, dtype=float).reshape((self.d, 1))
 
 
 class LinUCB(MultiLinearAgents):
@@ -73,16 +82,8 @@ class LinUCB(MultiLinearAgents):
     def __init__(self, alpha, arms=None, arm_entries=None,
                  lbda=1.0, te=10, seed=None):
         """Init."""
-        # Check arms and arm_entries and get d
-        if arms is not None:
-            d = arms[0].shape[0]
 
-        elif arm_entries is not None:
-            d = len(arm_entries)
-
-        else:
-            raise ValueError("To init 'LinUCB' class, either pass 'arms'"
-                             " and 'arm_entries', none of them was given.")
+        d = get_d(arms=arms, arm_entries=arm_entries)
 
         # init internal variables (inv_A, A, ...)
         super().__init__(d=d, lbda=lbda, te=te, seed=seed)

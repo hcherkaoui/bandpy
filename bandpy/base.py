@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from .utils import _fast_inv_sherman_morrison
+from .utils import _fast_inv_sherman_morrison, tolerant_mean
 from .checks import check_random_state, check_actions
 
 
@@ -20,6 +20,8 @@ class BanditEnv():
 
         self.r_t = dict()
         self.s_t = dict()
+        self.best_s_t = dict()
+        self.worst_s_t = dict()
         self.R_t = dict()
         self.S_t = dict()
         self.best_S_t = dict()
@@ -27,18 +29,22 @@ class BanditEnv():
 
     def reset(self, seed=np.NaN):
         """Reset the environment (and the randomness if seed is not NaN)."""
-        self.t = 1
+        # reset randomness
+        self.seed = seed
+        self.rng = check_random_state(self.seed)
 
-        if not np.isnan(seed):
-            self.seed = seed
-            self.rng = check_random_state(self.seed)
-
+        # re-set reward tracking
         self.r_t = dict()
         self.s_t = dict()
+        self.best_s_t = dict()
+        self.worst_s_t = dict()
         self.R_t = dict()
         self.S_t = dict()
         self.best_S_t = dict()
         self.worst_S_t = dict()
+
+        # re-set time
+        self.t = 1
 
     def step(self, actions):
         """Pull the k-th arm chosen in 'actions'."""
@@ -84,7 +90,6 @@ class BanditEnv():
             worst_S_t = sum_{s=1}^t y_min
 
         for the given agent."""
-
         theta_idx = self.theta_per_agent[name_agent]
 
         y_max = self.best_reward[theta_idx]
@@ -93,6 +98,9 @@ class BanditEnv():
         if name_agent in self.S_t:
             self.r_t[name_agent].append(y_max - y)
             self.s_t[name_agent].append(y)
+
+            self.best_s_t[name_agent].append(y_max)
+            self.worst_s_t[name_agent].append(y_min)
 
             self.R_t[name_agent] += y_max - y
             self.S_t[name_agent] += y
@@ -103,6 +111,9 @@ class BanditEnv():
         else:
             self.r_t[name_agent] = [y_max - y]
             self.s_t[name_agent] = [y]
+
+            self.best_s_t[name_agent] = [y_max]
+            self.worst_s_t[name_agent] = [y_min]
 
             self.R_t[name_agent] = y_max - y
             self.S_t[name_agent] = y
@@ -129,12 +140,22 @@ class BanditEnv():
     def mean_instantaneous_reward(self):
         """Return the averaged (on the network) instantaneous reward (array).
         """
-        return np.mean(np.r_[list(self.s_t.values())], axis=0)
+        return tolerant_mean(list(self.s_t.values()))
+
+    def mean_instantaneous_best_reward(self):
+        """Return the averaged (on the network) best instantaneous reward
+        (array)."""
+        return tolerant_mean(list(self.best_s_t.values()))
+
+    def mean_instantaneous_worst_reward(self):
+        """Return the averaged (on the network) worst instantaneous reward
+        (array)."""
+        return tolerant_mean(list(self.worst_s_t.values()))
 
     def mean_instantaneous_regret(self):
         """Return the averaged (on the network) instantaneous regret (array).
         """
-        return np.mean(np.r_[list(self.r_t.values())], axis=0)
+        return tolerant_mean(list(self.r_t.values()))
 
     def mean_cumulative_regret(self):
         """Return the averaged (on the network) cumulative regret (float)."""
