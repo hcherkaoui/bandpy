@@ -463,7 +463,10 @@ class DynUCB():
         self.N = N
         self.agents = dict()
         for n in range(self.N):
-            self.agents[f"agent_{n}"] = MultiLinearAgents(arms=arms)
+            # only use LinUCB for the internal variables (no arm selection)
+            self.agents[f"agent_{n}"] = LinUCB(-1, arms=self.arms,
+                                               arm_entries=None, lbda=1.0,
+                                               te=10, seed=seed)
 
         # clusters variables
         self.n_clusters = n_clusters
@@ -510,6 +513,13 @@ class DynUCB():
         for agent_name, agent in self.agents.items():
             best_arms[agent_name] = agent.best_arm
         return best_arms
+
+    def default_act(self):
+        """ Make each agent pulls 'default' arm to init the simulation."""
+        actions = dict()
+        for agent_name, agent in self.agents.items():
+            actions[agent_name] = self.agents[agent_name].select_default_arm()
+        return actions
 
     def act(self, observations, rewards):
         """Make each agent choose an arm in a decentralized way."""
