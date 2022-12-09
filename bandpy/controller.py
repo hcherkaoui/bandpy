@@ -107,10 +107,10 @@ class ClusteringController(Controller):
 
             label = self.agent_labels[agent_name]
 
-            k = observations[agent_name]['last_arm_pulled']
+            k_or_arm = observations[agent_name]['last_arm_pulled']
             r = observations[agent_name]['last_reward']
 
-            observations_per_cluster[label]['last_arm_pulled'].append(k)
+            observations_per_cluster[label]['last_arm_pulled'].append(k_or_arm)
             observations_per_cluster[label]['last_reward'].append(r)
 
             rewards_per_cluster[label].append(r)
@@ -121,7 +121,7 @@ class ClusteringController(Controller):
             label = self.agent_labels[agent_name]
 
             observation_shared = list(observations_per_cluster[label]['last_arm_pulled'])  # noqa
-            observation_local = int(observations[agent_name]['last_arm_pulled'])  # noqa
+            observation_local = observations[agent_name]['last_arm_pulled']
             complete_observation = (observation_local, observation_shared)
 
             reward_shared = list(rewards_per_cluster[label])
