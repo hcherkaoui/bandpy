@@ -2,7 +2,6 @@
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import copy
-import itertools
 from joblib import Parallel, delayed
 import numpy as np
 
@@ -112,27 +111,30 @@ def run_trials(env,
     return trial_results
 
 
-def run_trials_with_grid_search(env_cls,
-                                env_kwargs_grid,
-                                controller_cls,
-                                controller_kwargs_grid,
-                                controller_stop=False,
-                                seeds=None,
-                                n_jobs_trials=1,
-                                n_jobs_grid_search=1,
-                                verbose=True):
-    """Run 'run_trials' with a grid-search on the given parameters for both the
-    environment and the controller.
+def run_trials_with_grid_search_on_agents(env_instance,
+                                          controller_cls,
+                                          controller_kwargs,
+                                          agent_cls,
+                                          agent_kwargs_grid,
+                                          controller_stop=False,
+                                          seeds=None,
+                                          n_jobs_trials=1,
+                                          n_jobs_grid_search=1,
+                                          verbose=True):
+    """Run 'run_trials' with a grid-search on the given parameters for the
+    agents.
 
     Parameters
     ----------
-    env_cls : env-class, environment class.
-
-    env_kwargs_grid : dict of list, grid for env parameters.
+    env_instance : env-class, environment class or instance
 
     controller_cls : controller-class, controller class.
 
-    controller_kwargs_grid : dict of list, grid for controller parameters.
+    controller_kwargs : dict, controller parameters.
+
+    agent_cls : agent-class, agent class.
+
+    agent_kwargs_grid : dict of list, grid for agent parameters.
 
     controller_stop: bool, enable controller early-stopping.
 
@@ -152,27 +154,30 @@ def run_trials_with_grid_search(env_cls,
     all_results : dict, dict of list (one-trial results) for inspection, see
         'run_one_trial' for more information.
     """
-    env_kwargs_list = convert_grid_to_list(env_kwargs_grid)
-    controller_kwargs_list = convert_grid_to_list(controller_kwargs_grid)
+    agent_kwargs_list = convert_grid_to_list(agent_kwargs_grid)
 
-    envs = [env_cls(**env_kwargs) for env_kwargs in env_kwargs_list]
-    controllers = [controller_cls(**controller_kwargs)
-                   for controller_kwargs in controller_kwargs_list]
-
-    def _run_trials(env, controller, seeds, n_jobs, verbose, controller_stop):
-        trial_results = run_trials(env=env, controller=controller,
+    def _run_trials(env_instance, controller_cls, controller_kwargs, agent_cls,
+                    agent_kwargs, seeds, n_jobs, verbose,
+                    controller_stop):
+        controller_kwargs['agent_cls'] = agent_cls
+        controller_kwargs['agent_kwargs'] = agent_kwargs
+        controller_instance = controller_cls(**controller_kwargs)
+        trial_results = run_trials(env=env_instance,
+                                   controller=controller_instance,
                                    controller_stop=controller_stop,
                                    seeds=seeds, n_jobs=n_jobs,
                                    verbose=verbose)
-        l_last_regret = [trial_result[1][-1] for trial_result in trial_results]
-        return np.mean(l_last_regret), trial_results
+        l_last_cumulative_regret = [trial_result[1].mean_cumulative_regret()
+                                    for trial_result in trial_results]
+        return np.mean(l_last_cumulative_regret), agent_kwargs, trial_results
 
     delayed_pool = []
-    for setting in itertools.product(envs, controllers):
+    for agent_kwargs in agent_kwargs_list:
 
-        env, controller = setting
-
-        trial_kwargs = dict(env=env, controller=controller,
+        trial_kwargs = dict(env_instance=env_instance,
+                            controller_cls=controller_cls,
+                            controller_kwargs=controller_kwargs,
+                            agent_cls=agent_cls, agent_kwargs=agent_kwargs,
                             controller_stop=controller_stop,
                             n_jobs=n_jobs_trials,
                             seeds=seeds, verbose=verbose)
@@ -184,9 +189,87 @@ def run_trials_with_grid_search(env_cls,
                            verbose=verbose_level)(delayed_pool)
 
     results = dict()
-    for mean_last_regret, trial_results in all_results:
-        results[mean_last_regret] = trial_results
+    for run_results in all_results:
+        mean_last_cumulative_regret, agent_kwargs, trial_results = run_results
+        results[mean_last_cumulative_regret] = (agent_kwargs, trial_results)
 
-    min_last_regret = np.min(list(results.keys()))
+    min_mean_last_cumulative_regret = np.min(list(results.keys()))
 
-    return results[min_last_regret], results
+    return min_mean_last_cumulative_regret, results[min_mean_last_cumulative_regret], results  # noqa
+
+
+def run_trials_with_grid_search_on_controller(env_instance,
+                                              controller_cls,
+                                              controller_kwargs_grid,
+                                              controller_stop=False,
+                                              seeds=None,
+                                              n_jobs_trials=1,
+                                              n_jobs_grid_search=1,
+                                              verbose=True):
+    """Run 'run_trials' with a grid-search on the given parameters for the
+    controller.
+
+    Parameters
+    ----------
+    env_instance : env-class, environment class or instance
+
+    controller_cls : controller-class, controller class.
+
+    controller_kwargs_grid : dict of list, controller parameters grid.
+
+    controller_stop: bool, enable controller early-stopping.
+
+    seed : None, int, random-instance, seed for the trial.
+
+    n_jobs_trials : int, number of CPU to use for the trials.
+
+    n_jobs_grid_search : int, number of CPU to use for the grid-search.
+
+    verbose : bool, enable verbose.
+
+    Return
+    ------
+    best_results : list, one-trial results, see 'run_one_trial' for more
+        information.
+
+    all_results : dict, dict of list (one-trial results) for inspection, see
+        'run_one_trial' for more information.
+    """
+    controller_kwargs_list = convert_grid_to_list(controller_kwargs_grid)
+
+    def _run_trials(env_instance, controller_cls, controller_kwargs, seeds,
+                    n_jobs, verbose, controller_stop):
+        controller_instance = controller_cls(**controller_kwargs)
+        trial_results = run_trials(env=env_instance,
+                                   controller=controller_instance,
+                                   controller_stop=controller_stop,
+                                   seeds=seeds, n_jobs=n_jobs,
+                                   verbose=verbose)
+        l_last_cumulative_regret = [trial_result[1].mean_cumulative_regret()
+                                    for trial_result in trial_results]
+        return np.mean(l_last_cumulative_regret), controller_kwargs, trial_results  # noqa
+
+    delayed_pool = []
+    for controller_kwargs in controller_kwargs_list:
+
+        trial_kwargs = dict(env_instance=env_instance,
+                            controller_cls=controller_cls,
+                            controller_kwargs=controller_kwargs,
+                            controller_stop=controller_stop,
+                            n_jobs=n_jobs_trials,
+                            seeds=seeds, verbose=verbose)
+
+        delayed_pool.append(delayed(_run_trials)(**trial_kwargs))
+
+    verbose_level = 100 if verbose else 0
+    all_results = Parallel(n_jobs=n_jobs_grid_search,
+                           verbose=verbose_level)(delayed_pool)
+
+    results = dict()
+    for run_results in all_results:
+        mean_last_cumulative_regret, controller_kwargs, trial_results = run_results  # noqa
+        results[mean_last_cumulative_regret] = (controller_kwargs, trial_results)  # noqa
+
+    min_mean_last_cumulative_regret = np.min(list(results.keys()))
+
+    return min_mean_last_cumulative_regret, results[min_mean_last_cumulative_regret], results  # noqa
