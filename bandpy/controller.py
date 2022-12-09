@@ -253,7 +253,7 @@ class GraphController(ClusteringController):
     def eps(self, A):
         a = np.sqrt(self.lbda) * self.S
         b = 2.0 * np.log(1.0 / self.delta)
-        c = np.log(np.linalg.det(A) / np.linalg.det(self.A_init))
+        c = np.log(np.linalg.det(A) / self.det_A_init)
         return a + self.R * np.sqrt(b + c)
 
     def compute_graph(self):
