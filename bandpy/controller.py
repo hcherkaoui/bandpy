@@ -371,27 +371,6 @@ class ConnectedComponentsGraphController(GraphController):
 
             self.unique_labels = np.unique(range(n_comps))
 
-            # if n_comps == self.n_clusters:
-            #     self.labels_attributed = True
-
-            # else:
-            #     self.labels_attributed = False
-
-            # if n_comps == self.n_clusters:
-            #     for label, comp in enumerate(comps):
-            #         for i in comp:
-            #             self.agent_labels[f"agent_{i}"] = label
-
-            #     self.unique_labels = np.unique(range(n_comps))
-            #     self.labels_attributed = True
-
-            # else:
-            #     for i in range(self.N):
-            #         self.agent_labels[f"agent_{i}"] = i
-
-            #     self.unique_labels = np.arange(self.N)
-            #     self.labels_attributed = False
-
 
 class CLUB(ClusteringController):
     """CLUB algorithm as defined in ```Online Clustering of
