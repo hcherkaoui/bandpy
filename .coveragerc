@@ -5,8 +5,12 @@ source =
     bandpy
 omit =
     setup.py
-    info.py
-    plotting.py
+    */__init__.py
+    */info.py
+    */env.py
+    */agents.py
+    */plotting.py
+    */tests/*
 
 [report]
 exclude_lines =
