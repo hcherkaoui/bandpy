@@ -4,11 +4,10 @@
 import re
 import pytest
 import numpy as np
-from bandpy.utils import (_fast_inv_sherman_morrison, convert_grid_to_list,
-                          _generate_list_of_nd_array,
-                          generate_gaussian_arm_entries,
-                          arms_to_arm_entries, arm_entries_to_arms,
-                          proj_on_arm_entries, tests_set_up)
+from bandpy.utils import (convert_grid_to_list, _generate_list_of_nd_array,
+                          generate_gaussian_arm_entries, arms_to_arm_entries,
+                          arm_entries_to_arms, proj_on_arm_entries,
+                          tests_set_up)
 
 
 def test_arms_and_arm_entries_converter():
@@ -86,19 +85,3 @@ def test_proj_on_arm_entries(d, seed):
     proj_x_k_ref = arms[k]
 
     np.testing.assert_array_equal(proj_x_k, proj_x_k_ref)
-
-
-@pytest.mark.parametrize('d', [2, 10])
-@pytest.mark.parametrize('seed', [0, 1])
-def test_fast_inv_sherman_morrison(d, seed):
-    """Test the _fast_inv_sherman_morrison"""
-    set_up = tests_set_up(d=d, seed=seed)
-
-    inv_A = set_up['inv_A']
-    x_k = set_up['x_k']
-
-    inv_A_updated_ref = np.linalg.inv(inv_A + x_k.dot(x_k.T))
-    inv_A_updated = _fast_inv_sherman_morrison(inv_A, x_k)
-
-    np.testing.assert_allclose(inv_A_updated_ref, inv_A_updated, rtol=1e-5,
-                               atol=1e-3)

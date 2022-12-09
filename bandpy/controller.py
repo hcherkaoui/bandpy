@@ -3,11 +3,12 @@
 
 import itertools
 import numpy as np
-from scipy import optimize
+from scipy import linalg, optimize
 import networkx as nx
 
 from .base import Controller
-from .multi_agents import MultiLinearAgents, LinUCB
+from .linear_agents import LinUCB
+from .compils import _K_func
 from .checks import check_random_state, check_N_and_agent_names
 
 
@@ -270,15 +271,20 @@ class GraphController(ClusteringController):
 
     def min_K_func(self, inv_V_i, inv_V_j, theta_i, theta_j, eps_i, eps_j):
         """Test function to check if two ellipsoid are overlapping."""
-        theta_ij = theta_i - theta_j
+        lambdas, phi = linalg.eigh(inv_V_j * eps_j, b=inv_V_i * eps_i)
 
-        def f(lbda):
-            A = eps_j / (1.0 - lbda) * inv_V_j
-            A += eps_i / lbda * inv_V_i
-            norm_ = (theta_ij).T.dot(np.linalg.pinv(A)).dot(theta_ij)
-            return 1.0 - float(norm_)
+        d, _ = theta_i.shape  # either theta_i or theta_j
+        lambdas = lambdas.reshape((d, 1))
+        phi = phi.reshape((d, d))
+
+        theta_ij = theta_i - theta_j
+        v_squared = phi.T.dot(theta_ij) ** 2
+
+        def f(s):
+            return float(_K_func(s, v_squared, lambdas))
 
         res = optimize.minimize_scalar(f, bounds=[0.0, 1.0], method='bounded')
+
         return float(res.fun)
 
     def eps(self, A):

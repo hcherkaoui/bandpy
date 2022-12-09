@@ -6,7 +6,6 @@ import itertools
 import numpy as np
 import pandas as pd
 from joblib import Memory
-import numba
 from matrix_factorization import KernelMF
 
 from .checks import check_random_state
@@ -44,14 +43,6 @@ def tolerant_stats(arrs):
                ]
 
     return results
-
-
-@numba.jit((numba.float64[:, :], numba.float64[:, :]), nopython=True,
-           cache=True, fastmath=True)
-def _fast_inv_sherman_morrison(inv_A, x):  # pragma: no cover
-    """Sherman-Morrison identity to compute the inverse of A + xxT."""
-    inv_A_x = inv_A.dot(x)
-    return inv_A - inv_A_x.dot(x.T.dot(inv_A)) / (1.0 + x.T.dot(inv_A_x))
 
 
 def _fill_mising_values(data, K, col_name=None):
