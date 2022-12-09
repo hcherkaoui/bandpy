@@ -52,15 +52,11 @@ class ClusteringController(Controller):
     multi-agents.
     """
 
-    def __init__(self, agent_cls, agent_kwargs, N=None, agent_names=None,
-                 second_agent_cls=None, second_agent_kwargs=None):
+    def __init__(self, agent_cls, agent_kwargs, N=None, agent_names=None):
         """Init."""
         self.done = False
 
         N, agent_names = check_N_and_agent_names(N, agent_names)
-
-        self.second_agent_cls = second_agent_cls
-        self.second_agent_kwargs = second_agent_kwargs
 
         super().__init__(N=N, agent_cls=agent_cls, agent_kwargs=agent_kwargs,
                          agent_names=agent_names)
@@ -68,34 +64,6 @@ class ClusteringController(Controller):
     def cluster_agents(self, t):
         """Cluster all the agents from their estimated theta."""
         raise NotImplementedError
-
-    def _switch_policy(self):
-        """Switch the agent policy to a new one while keeping the gathered
-        observation."""
-        if ((self.second_agent_cls is not None) and
-           (self.second_agent_kwargs is not None)):
-
-            new_agents = dict()
-
-            for n in range(self.N):
-
-                agent = self.agents[f"agent_{n}"]
-                new_agent = self.second_agent_cls(**self.second_agent_kwargs)
-                new_agents[f"agent_{n}"] = new_agent
-
-                new_agent.A = np.copy(agent.A)
-                new_agent.b = np.copy(agent.b)
-                new_agent.inv_A = np.copy(agent.inv_A)
-                new_agent.theta_hat = np.copy(agent.theta_hat)
-                new_agent.A_local = np.copy(agent.A_local)
-                new_agent.b_local = np.copy(agent.b_local)
-                new_agent.inv_A_local = np.copy(agent.inv_A_local)
-                new_agent.theta_hat_local = np.copy(agent.theta_hat_local)
-                new_agent.A_local = np.copy(agent.A_local)
-
-            self.agents = new_agents
-
-        self.policies_switched = True
 
     def _act(self, observations, rewards):
         """Make each agent choose an arm in a decentralized way."""
@@ -125,9 +93,6 @@ class ClusteringController(Controller):
 
         if not self.labels_attributed:
             self.cluster_agents(t)
-
-        if self.labels_attributed and not self.policies_switched:
-            self._switch_policy()
 
         # initialize the obersations/rewards per cluster
         observations_per_cluster, rewards_per_cluster = dict(), dict()
@@ -185,7 +150,6 @@ class SingleClusterController(ClusteringController):
 
         # clusters variables
         self.labels_attributed = True
-        self.policies_switched = True
         self.agent_labels = dict()
         for agent_name in agent_names:
             self.agent_labels[agent_name] = 0
@@ -214,7 +178,6 @@ class OracleClusteringController(ClusteringController):
 
         # clusters variables
         self.labels_attributed = True
-        self.policies_switched = True
         self.agent_labels = agent_labels
         self.unique_labels = np.unique(list(self.agent_labels.values()))
         self.l_labels = [[self.agent_labels[agent_name]
@@ -234,8 +197,7 @@ class GraphController(ClusteringController):
     """
 
     def __init__(self, R, S, lbda, A_init, delta, agent_cls,
-                 agent_kwargs, N=None, agent_names=None, second_agent_cls=None,
-                 second_agent_kwargs=None):
+                 agent_kwargs, N=None, agent_names=None):
         """Init."""
         self.done = False
 
@@ -253,15 +215,16 @@ class GraphController(ClusteringController):
         # ridge parameter
         self.lbda = lbda
         self.A_init = A_init
+        self.det_A_init = np.linalg.det(self.A_init)
 
         super().__init__(N=N, agent_cls=agent_cls,
-                         agent_kwargs=agent_kwargs, agent_names=agent_names,
-                         second_agent_cls=second_agent_cls,
-                         second_agent_kwargs=second_agent_kwargs)
+                         agent_kwargs=agent_kwargs, agent_names=agent_names)
+
+        # graph
+        self.G = None
 
         # clusters variables
         self.labels_attributed = False
-        self.policies_switched = False
         self.unique_labels = np.arange(N)
         self.agent_labels = dict()
         for i, agent_name in enumerate(self.agent_names):
@@ -324,8 +287,7 @@ class KPartiteGraphController(GraphController):
     """Bi-partite GraphController. """
     def __init__(self, R, S, lbda, A_init, delta, n_clusters,
                  freq_graph_update, agent_cls, agent_kwargs, N=None,
-                 agent_names=None, second_agent_cls=None,
-                 second_agent_kwargs=None):
+                 agent_names=None):
         """Init."""
         # adgency matrix of the graph
         self.freq_graph_update = freq_graph_update
@@ -337,9 +299,7 @@ class KPartiteGraphController(GraphController):
 
         super().__init__(N=N, R=R, S=S, lbda=lbda, A_init=A_init, delta=delta,
                          agent_cls=agent_cls, agent_kwargs=agent_kwargs,
-                         agent_names=agent_names,
-                         second_agent_cls=second_agent_cls,
-                         second_agent_kwargs=second_agent_kwargs)
+                         agent_names=agent_names)
 
     def _format_G(self, G, t):
         return (G < 0.0).astype(int)
@@ -373,8 +333,7 @@ class ConnectedComponentsGraphController(GraphController):
     """Connected components GraphController. """
     def __init__(self, R, S, lbda, A_init, delta,
                  freq_graph_update, agent_cls, agent_kwargs, N=None,
-                 agent_names=None, second_agent_cls=None,
-                 second_agent_kwargs=None):
+                 agent_names=None):
         """Init."""
         # adgency matrix of the graph
         self.freq_graph_update = freq_graph_update
@@ -383,9 +342,7 @@ class ConnectedComponentsGraphController(GraphController):
 
         super().__init__(N=N, R=R, S=S, lbda=lbda, A_init=A_init, delta=delta,
                          agent_cls=agent_cls, agent_kwargs=agent_kwargs,
-                         agent_names=agent_names,
-                         second_agent_cls=second_agent_cls,
-                         second_agent_kwargs=second_agent_kwargs)
+                         agent_names=agent_names)
 
     def _format_G(self, G, t):
         # return np.maximum(G, 0.0)
@@ -448,13 +405,10 @@ class CLUB(ClusteringController):
 
         super().__init__(N=N, agent_cls=agent_cls,
                          agent_kwargs=agent_kwargs,
-                         agent_names=agent_names,
-                         second_agent_cls=None,
-                         second_agent_kwargs=None)
+                         agent_names=agent_names)
 
         # clusters variables
         self.labels_attributed = False
-        self.policies_switched = True
         self.unique_labels = np.arange(self.N)
         self.agent_labels = dict()
         for i in np.arange(self.N):
