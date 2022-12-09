@@ -10,7 +10,7 @@ import time
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-from bandpy import run_trials, env, controller, multi_agents, utils
+from bandpy import run_trials, env, controller, agents, utils
 
 import matplotlib as mpl
 mpl.rcParams['text.usetex'] = True
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                                         n_thetas=1, sigma=args.sigma,
                                         shuffle_labels=False, seed=args.seed)
 
-    agent_cls = multi_agents.LinUCB
+    agent_cls = agents.LinUCB
     agent_kwargs = {'alpha': args.alpha,
                     'arms': bandit_env.arms,
                     'te': args.te,
@@ -118,8 +118,10 @@ if __name__ == '__main__':
 
     axis[0, 0].set_xlabel(r'$t$')
     axis[0, 0].set_ylabel(r'$r_t$')
-    axis[0, 0].set_ylim(0.0)
+
     axis[0, 0].set_xscale('log')
+
+    axis[0, 0].set_ylim(0.0)
 
     axis[0, 0].grid()
 
@@ -132,6 +134,7 @@ if __name__ == '__main__':
 
     axis[0, 1].set_xlabel(r'$t$')
     axis[0, 1].set_ylabel(r'$R_t$')
+
     axis[0, 1].set_xscale('log')
     axis[0, 1].set_yscale('log')
 
