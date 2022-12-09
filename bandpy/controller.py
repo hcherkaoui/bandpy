@@ -353,8 +353,13 @@ class ConnectedComponentsGraphController(GraphController):
 
         if t % self.freq_graph_update == 0:
 
+            # update graph
             G = self.compute_graph()
 
+            # keep track of the graph
+            self.G = G
+
+            # preprocess the graph before clustering
             G = self._format_G(G, t)
 
             comps = list(nx.connected_components(nx.from_numpy_array(G)))
