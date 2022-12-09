@@ -1,4 +1,4 @@
-""" Define all the agents availables in Bandpy. """
+""" Define all the MAB agents availables in Bandpy. """
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import numpy as np

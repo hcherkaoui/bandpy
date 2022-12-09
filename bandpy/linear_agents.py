@@ -1,4 +1,4 @@
-""" Define all the agents availables in Bandpy. """
+""" Define all the linear agents availables in Bandpy. """
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import numpy as np
@@ -8,7 +8,8 @@ from .base import MultiLinearAgents
 from .criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
 from .arms import LinearArms, _select_default_arm
 from .checks import check_random_state
-from .utils import _fast_inv_sherman_morrison, get_d
+from .compils import _fast_inv_sherman_morrison
+from .utils import get_d
 from .__init__ import MAX_K
 
 
