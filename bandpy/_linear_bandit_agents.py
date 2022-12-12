@@ -4,16 +4,16 @@
 import numpy as np
 from scipy import optimize
 
-from .base import MultiLinearAgents
-from .criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
-from .arms import LinearArms, _select_default_arm
-from .checks import check_random_state
-from .compils import _fast_inv_sherman_morrison
+from ._base import MultiLinearAgentsBase
+from ._criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
+from ._arms import LinearArms, _select_default_arm
+from ._checks import check_random_state
+from ._compils import _fast_inv_sherman_morrison
 from .utils import get_d
 from .__init__ import MAX_K
 
 
-class LinUniform(MultiLinearAgents):
+class LinUniform(MultiLinearAgentsBase):
     """ Uniform agent for linear bandit.
 
     Parameters
@@ -69,7 +69,7 @@ class LinUniform(MultiLinearAgents):
             return np.array(random_arm, dtype=float).reshape((self.d, 1))
 
 
-class LinUCB(MultiLinearAgents):
+class LinUCB(MultiLinearAgentsBase):
     """ Linear Upper confidence bound class to define the UCB algorithm.
 
     Parameters
@@ -121,7 +121,7 @@ class LinUCB(MultiLinearAgents):
         return selected_k_or_arm
 
 
-class EOptimalDesign(MultiLinearAgents):
+class EOptimalDesign(MultiLinearAgentsBase):
     """ E-(trace) optimal design algorithm.
 
     Parameters
@@ -171,7 +171,7 @@ class EOptimalDesign(MultiLinearAgents):
         return self.rng.choice(np.arange(self.K), p=self.p)
 
 
-class GreedyLinGapE(MultiLinearAgents):
+class GreedyLinGapE(MultiLinearAgentsBase):
     """ Linear Gap-based Exploration class to define the LinGapE algorithm.
 
     Parameters

@@ -8,7 +8,7 @@ import pandas as pd
 from joblib import Memory
 from matrix_factorization import KernelMF
 
-from .checks import check_random_state
+from ._checks import check_random_state
 
 
 def _tolerant_concat(arrs):

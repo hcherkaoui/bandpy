@@ -4,7 +4,7 @@
 import numpy as np
 from scipy import optimize
 
-from .criterions import f_neg_scalar_prod, grad_neg_scalar_prod
+from ._criterions import f_neg_scalar_prod, grad_neg_scalar_prod
 from .utils import proj_on_arm_entries
 from .__init__ import MAX_K
 

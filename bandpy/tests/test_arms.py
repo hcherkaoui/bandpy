@@ -4,8 +4,8 @@
 import pytest
 import numpy as np
 
-from bandpy.arms import LinearArms
-from bandpy.criterions import f_neg_ucb, grad_neg_ucb
+from bandpy._arms import LinearArms
+from bandpy._criterions import f_neg_ucb, grad_neg_ucb
 from bandpy.utils import (tests_set_up, generate_gaussian_arm_entries,
                           arm_entries_to_arms)
 

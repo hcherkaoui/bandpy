@@ -2,8 +2,9 @@
 
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
-from .linear_agents import LinUniform, LinUCB, EOptimalDesign, GreedyLinGapE
-from .multi_armed_bandit_agents import FollowTheLeader, Uniform, EC, UCB
+from ._linear_bandit_agents import (LinUniform, LinUCB, EOptimalDesign,
+                                    GreedyLinGapE)
+from ._multi_armed_bandit_agents import FollowTheLeader, Uniform, EC, UCB
 
 
 __all__ = ['LinUniform',

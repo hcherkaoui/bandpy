@@ -4,6 +4,7 @@
 import re
 import pytest
 import numpy as np
+
 from bandpy.utils import (convert_grid_to_list, _generate_list_of_nd_array,
                           generate_gaussian_arm_entries, arms_to_arm_entries,
                           arm_entries_to_arms, proj_on_arm_entries,

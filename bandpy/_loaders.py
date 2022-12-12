@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from joblib import Memory
 from sklearn.cluster import KMeans
+
 from .utils import fill_mising_values, check_random_state
 
 

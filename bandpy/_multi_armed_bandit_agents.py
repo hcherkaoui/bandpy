@@ -2,19 +2,11 @@
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import numpy as np
-import numba
-from .base import Agent
+
+from ._base import SingleMABAgentBase
 
 
-@numba.jit((numba.float64[:, :], numba.float64[:, :]), nopython=True,
-           cache=True, fastmath=True)
-def _fast_inv_sherman_morrison(inv_A, x):  # pragma: no cover
-    """Sherman-Morrison identity to compute the inverse of A + xxT."""
-    inv_A_x = inv_A.dot(x)
-    return inv_A - inv_A_x.dot(x.T.dot(inv_A)) / (1.0 + x.T.dot(inv_A_x))
-
-
-class FollowTheLeader(Agent):
+class FollowTheLeader(SingleMABAgentBase):
     """FollowTheLeader class to define a simple agent that choose the best arm
     observed so far.
 
@@ -33,13 +25,21 @@ class FollowTheLeader(Agent):
     @property
     def best_arm(self):
         """Return the estimated best arm if the estimation is avalaible, None
-        if not."""
+        if not.
+
+        Parameters
+        ----------
+        """
         mean_reward_per_arms = [np.mean(self.reward_per_arms[k])
                                 for k in range(self.K)]
         return np.argmax(mean_reward_per_arms)
 
     def act(self, observation, reward):
-        """Select an arm."""
+        """Select an arm.
+
+        Parameters
+        ----------
+        """
 
         # fetch and rename main variables
         last_k = observation['last_arm_pulled']
@@ -52,7 +52,7 @@ class FollowTheLeader(Agent):
         return self.best_arm
 
 
-class Uniform(Agent):
+class Uniform(SingleMABAgentBase):
     """ Uniform class to define a simple agent that choose the arm
     randomly.
 
@@ -69,15 +69,19 @@ class Uniform(Agent):
     @property
     def best_arm(self):
         """Return the estimated best arm if the estimation is avalaible, None
-        if not."""
+        if not.
+
+        Parameters
+        ----------
+        """
         return None
 
     def act(self, observation, reward):
         """Select an arm."""
-        return self.randomly_select_arm()
+        return self.rng.randint(self.K)
 
 
-class EC(Agent):
+class EC(SingleMABAgentBase):
     """ Explore-and-Commit class to define a simple agent that randomly explore
     the arms and commit to the best estimated arm.
 
@@ -90,7 +94,7 @@ class EC(Agent):
         or random-seed used to initialize the random-instance
     """
 
-    def __init__(self, K, T, m=0.5, seed=None):
+    def __init__(self, Te, K, seed=None):
         """Init."""
 
         super().__init__(K=K, seed=seed)
@@ -98,21 +102,25 @@ class EC(Agent):
         self.done = False
         self.estimated_best_arm = None
 
-        if not ((m > 0.0) and (m < 1.0)):
-            raise ValueError(f"'m' (exploring time-ratio) should belong to, "
-                             f"]0.0, 1.0[, got {m}")
-
-        self.Te = int(m * T)
+        self.Te = Te
         self.reward_per_arms = dict([(k, [0.0]) for k in range(self.K)])
 
     @property
     def best_arm(self):
         """Return the estimated best arm if the estimation is avalaible, None
-        if not."""
+        if not.
+
+        Parameters
+        ----------
+        """
         return self.estimated_best_arm
 
     def act(self, observation, reward):
-        """Select an arm."""
+        """Select an arm.
+
+        Parameters
+        ----------
+        """
 
         # fetch and rename main variables
         t = observation['t']
@@ -141,7 +149,7 @@ class EC(Agent):
         return k
 
 
-class UCB(Agent):
+class UCB(SingleMABAgentBase):
     """ Upper confidence bound class to define the UCB algorithm.
 
     Parameters
@@ -168,15 +176,21 @@ class UCB(Agent):
     @property
     def best_arm(self):
         """Return the estimated best arm if the estimation is avalaible, None
-        if not."""
+        if not.
+
+        Parameters
+        ----------
+        """
         mean_reward_per_arms = [np.mean(self.reward_per_arms[k])
                                 for k in range(self.K)]
-        filter = np.max(mean_reward_per_arms) == mean_reward_per_arms
-        best_arms = np.arange(self.K)[filter]
-        return self.randomly_select_one_arm_from_best_arms(best_arms)
+        return np.argmax(mean_reward_per_arms)
 
     def act(self, observation, reward):
-        """Select an arm."""
+        """Select an arm.
+
+        Parameters
+        ----------
+        """
 
         # fetch and rename main variables
         last_k = observation['last_arm_pulled']

@@ -4,11 +4,11 @@
 import numpy as np
 from scipy import optimize
 
-from .base import BanditEnv
-from .loaders import movie_lens_loader, yahoo_loader
-from .checks import (check_random_state, check_K_arms_arm_entries,
-                     check_thetas_and_n_thetas)
-from .criterions import f_neg_scalar_prod, grad_neg_scalar_prod
+from ._base import BanditEnvBase
+from ._loaders import movie_lens_loader, yahoo_loader
+from ._checks import (check_random_state, check_K_arms_arm_entries,
+                      check_thetas_and_n_thetas)
+from ._criterions import f_neg_scalar_prod, grad_neg_scalar_prod
 
 
 DEFAULT_DIR_DATASET_MOVIELENS = ("/mnt/c/Users/hwx1143141/Desktop/datasets/"
@@ -20,42 +20,7 @@ NB_MAX_USERS_MOVIELENS = 610
 NB_MAX_USERS_YAHOO = 1266
 
 
-class LinearBandit(BanditEnv):
-    """Abstract calss for 'LinearBandit' class to define a Linear Bandit in
-    dimension 'd'The reward is defined as 'r = theta.T.dot(x_k) + noise' with
-    noise drawn from a centered Gaussian distribution.
-
-    Parameters
-    ----------
-    T : int, the iteration finite horizon.
-    arms : list of np.array, list of arms.
-    theta : np.array, theta parameter.
-    sigma : float, standard deviation of the noise.
-    seed : np.random.RandomState instance, the random seed.
-    """
-    def __init__(self, T, arms, theta, sigma=1.0, seed=None):
-        """Init."""
-
-        super().__init__(T=T, seed=seed)
-
-        self.arms = arms
-        self.K = len(self.arms)
-
-        self.theta = theta
-        self.sigma = sigma
-
-        all_rewards = [float(self.theta.T.dot(x_k)) for x_k in self.arms]
-        self.best_arm = np.argmax(all_rewards)
-        self.best_reward = np.max(all_rewards)
-
-    def compute_reward(self, name_agent, k):
-        x_k = self.arms[k].reshape((self.d, 1))
-        r = float(x_k.T.dot(self.theta))
-        noise = float(self.sigma * self.rng.randn())
-        return r + noise
-
-
-class ClusteredGaussianLinearBandit(BanditEnv):
+class ClusteredGaussianLinearBandit(BanditEnvBase):
     """'ClusteredGaussianLinearBandit' class to define a Linear Bandit in
     dimension 'd'. The arms and the theta are drawn following a Gaussian. The
     reward is defined as 'r = theta_l_k.T.dot(x_k) + noise' with noise drawn
@@ -177,6 +142,20 @@ class ClusteredGaussianLinearBandit(BanditEnv):
 
         return theta_per_agent
 
+    def update_agent_stats(self, name_agent, y, no_noise_y):
+        """Update all statistic as listed in __init__ doc.
+
+        Parameters
+        ----------
+        """
+
+        theta_idx = self.theta_per_agent[name_agent]
+
+        y_max = self.best_reward[theta_idx]
+        y_min = self.worst_reward[theta_idx]
+
+        self._update_agent_stats(name_agent, y, no_noise_y, y_max, y_min)
+
     def compute_reward(self, agent_name, k_or_arm):
         """Compute the reward associated to the given arm or arm-index."""
 
@@ -194,7 +173,7 @@ class ClusteredGaussianLinearBandit(BanditEnv):
         return noise + no_noise_y, no_noise_y
 
 
-class DatasetEnv(BanditEnv):
+class DatasetEnv(BanditEnvBase):
     """ Environment based on a real dataset. """
 
     def __init__(self, T, N, K, d, dirname, sigma=0.0, seed=None):

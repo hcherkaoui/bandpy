@@ -2,9 +2,9 @@
 
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
-from .linear_bandit_env import (ClusteredGaussianLinearBandit, MovieLensEnv,
-                                YahooEnv)
-from .multi_armed_bandit_env import BernoulliKBandit, GaussianKBandit
+from ._linear_bandit_env import (ClusteredGaussianLinearBandit, MovieLensEnv,
+                                 YahooEnv)
+from ._multi_armed_bandit_env import BernoulliKBandit, GaussianKBandit
 
 
 __all__ = ['BernoulliKBandit',

@@ -6,8 +6,8 @@ import numpy as np
 from scipy.optimize import approx_fprime
 
 from bandpy.utils import tests_set_up
-from bandpy.criterions import (f_neg_ucb, grad_neg_ucb, f_neg_scalar_prod,
-                               grad_neg_scalar_prod)
+from bandpy._criterions import (f_neg_ucb, grad_neg_ucb, f_neg_scalar_prod,
+                                grad_neg_scalar_prod)
 
 
 @pytest.mark.parametrize('d', [2, 10])

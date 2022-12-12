@@ -3,14 +3,18 @@
 
 import numpy as np
 
-from .compils import _fast_inv_sherman_morrison
+from ._compils import _fast_inv_sherman_morrison
 from .utils import tolerant_mean
-from .checks import check_random_state, check_actions
-from .arms import _select_default_arm
+from ._checks import check_random_state, check_actions
+from ._arms import _select_default_arm
 
 
-class BanditEnv():
-    """ Virtual class of a Bandit environment. """
+class BanditEnvBase():
+    """ Virtual class of a Bandit environment.
+
+    Parameters
+    ----------
+    """
 
     def __init__(self, T, seed=None):
         """Init."""
@@ -46,7 +50,11 @@ class BanditEnv():
         self.no_noise_R_T = dict()
 
     def reset(self, seed=None):
-        """Reset the environment (and the randomness if seed is not NaN)."""
+        """Reset the environment (and the randomness if seed is not NaN).
+
+        Parameters
+        ----------
+        """
         # reset randomness
         self.seed = seed
         self.rng = check_random_state(self.seed)
@@ -58,7 +66,11 @@ class BanditEnv():
         self.t = 1
 
     def step(self, actions):
-        """Pull the k-th arm chosen in 'actions'."""
+        """Pull the k-th arm chosen in 'actions'.
+
+        Parameters
+        ----------
+        """
         actions = check_actions(actions)
 
         observations, rewards = dict(), dict()
@@ -90,18 +102,12 @@ class BanditEnv():
 
         return observations, rewards, done, info
 
-    def update_agent_stats(self, name_agent, y, no_noise_y):
-        """Update all statistic as listed in __init__ doc."""
-
-        theta_idx = self.theta_per_agent[name_agent]
-
-        y_max = self.best_reward[theta_idx]
-        y_min = self.worst_reward[theta_idx]
-
-        self._update_agent_stats(name_agent, y, no_noise_y, y_max, y_min)
-
     def _update_agent_stats(self, name_agent, y, no_noise_y, y_max, y_min):
-        """Update all statistic as listed in __init__ doc."""
+        """Update all statistic as listed in __init__ doc.
+
+        Parameters
+        ----------
+        """
 
         # only check self.S_t since there are -all- updated together # noqa
         if name_agent in self.S_t:
@@ -150,82 +156,148 @@ class BanditEnv():
 
     def mean_instantaneous_reward(self):
         """Return the averaged (on the network) instantaneous reward (array).
+
+        Parameters
+        ----------
         """
         return tolerant_mean(list(self.s_t.values()))
 
     def mean_instantaneous_no_noise_reward(self):
         """Return the averaged (on the network) instantaneous reward -without-
-        nosie (array). """
+        nosie (array).
+
+        Parameters
+        ----------
+        """
         return tolerant_mean(list(self.no_noise_s_t.values()))
 
     def mean_instantaneous_best_reward(self):
         """Return the averaged (on the network) best instantaneous reward
-        (array)."""
+        (array).
+
+        Parameters
+        ----------
+        """
         return tolerant_mean(list(self.best_s_t.values()))
 
     def mean_instantaneous_worst_reward(self):
         """Return the averaged (on the network) worst instantaneous reward
-        (array)."""
+        (array).
+
+        Parameters
+        ----------
+        """
         return tolerant_mean(list(self.worst_s_t.values()))
 
     def mean_instantaneous_regret(self):
         """Return the averaged (on the network) instantaneous regret (array).
+
+        Parameters
+        ----------
         """
         return tolerant_mean(list(self.r_t.values()))
 
     def mean_instantaneous_no_noise_regret(self):
         """Return the averaged (on the network) instantaneous regret -without-
-        nosie (array)."""
+        noise (array).
+
+        Parameters
+        ----------
+        """
         return tolerant_mean(list(self.no_noise_r_t.values()))
 
     def mean_cumulative_regret(self):
-        """Return the averaged (on the network) cumulative regret (array)."""
+        """Return the averaged (on the network) cumulative regret (array).
+
+        Parameters
+        ----------
+        """
         return tolerant_mean(list(self.R_t.values()))
 
     def mean_cumulative_no_noise_regret(self):
         """Return the averaged (on the network) cumulative regret -without
-        nosie- (array)."""
+        nosie- (array).
+
+        Parameters
+        ----------
+        """
         return tolerant_mean(list(self.no_noise_R_t.values()))
 
     def mean_cumulative_regret_last_value(self):
         """Return the averaged (on the network) cumulative regret last value
-        (float)."""
+        (float).
+
+        Parameters
+        ----------
+        """
         return np.mean(list(self.R_T.values()))
 
     def mean_cumulative_no_noise_regret_last_value(self):
         """Return the averaged (on the network) cumulative regret -without
-        nosie- last value (float)."""
+        nosie- last value (float).
+
+        Parameters
+        ----------
+        """
         return np.mean(list(self.no_noise_R_T.values()))
 
     def mean_cumulative_reward(self):
-        """Return the network averaged cumulative reward (array)."""
+        """Return the network averaged cumulative reward (array).
+
+        Parameters
+        ----------
+        """
         return tolerant_mean(list(self.S_t.values()))
 
     def mean_cumulative_no_noise_reward(self):
         """Return the network averaged cumulative reward -without noise-
-        (array)."""
+        (array).
+
+        Parameters
+        ----------
+        """
         return tolerant_mean(list(self.no_noise_S_t.values()))
 
     def mean_cumulative_reward_last_value(self):
-        """Return the network averaged cumulative reward last value (float)."""
+        """Return the network averaged cumulative reward last value (float).
+
+        Parameters
+        ----------
+        """
         return np.mean(list(self.S_T.values()))
 
     def mean_cumulative_no_noise_reward_last_value(self):
         """Return the network averaged cumulative reward -without noise- last
-        value (float)."""
+        value (float).
+
+        Parameters
+        ----------
+        """
         return np.mean(list(self.no_noise_S_T.values()))
 
     def mean_cumulative_best_reward(self):
-        """Return the network averaged best cumulative reward (array)."""
+        """Return the network averaged best cumulative reward (array).
+
+        Parameters
+        ----------
+        """
         return tolerant_mean(list(self.best_S_t.values()))
 
     def mean_cumulative_worst_reward(self):
-        """Return the network averaged worst cumulative reward (array)."""
+        """Return the network averaged worst cumulative reward (array).
+
+        Parameters
+        ----------
+        """
         return tolerant_mean(list(self.worst_S_t.values()))
 
 
-class Controller:
-    """ Abstract class for a controller then handle multiple agents. """
+class ControllerBase:
+    """ Abstract class for a controller then handle multiple agents.
+
+    Parameters
+    ----------
+    """
 
     def __init__(self, N, agent_cls, agent_kwargs, agent_names=None):
         """Init."""
@@ -243,29 +315,34 @@ class Controller:
 
     @property
     def best_arms(self):
-        """Return for each agent the estimated best arm. """
+        """Return for each agent the estimated best arm.
+
+        Parameters
+        ----------
+        """
         best_arms = dict()
         for agent_name, agent in self.agents.items():
             best_arms[agent_name] = agent.best_arm
         return best_arms
 
     def default_act(self):
-        """ Make each agent pulls 'default' arm to init the simulation."""
+        """ Make each agent pulls 'default' arm to init the simulation.
+
+        Parameters
+        ----------
+        """
         actions = dict()
         for agent_name, agent in self.agents.items():
             actions[agent_name] = self.agents[agent_name].select_default_arm()
         return actions
 
 
-class MultiLinearAgents:
-    """Agent that handle a multi-agents setting and the sharing of observation
-    while keeping a local estimation up to day.
+class MultiLinearAgentsBase:
+    """Linear agent that handle a multi-agents setting and the sharing of
+    observation while keeping a local estimation up to day.
 
     Parameters
     ----------
-    arms : list of np.array, list of arms.
-    seed : None, int, random-instance, (default=None), random-instance
-        or random-seed used to initialize the random-instance
     """
     def __init__(self, d, lbda=1.0, te=10, seed=None):
         """Init."""
@@ -290,7 +367,11 @@ class MultiLinearAgents:
         self.rng = check_random_state(seed)
 
     def _update_inv_A_A_b_shared(self, last_k_or_arm, last_r, t):
-        """Update A and b from observation."""
+        """Update A and b from observation.
+
+        Parameters
+        ----------
+        """
         inv_A_exact = t % self.te == 0
 
         for last_k_or_arm_, last_r_ in zip(last_k_or_arm, last_r):
@@ -311,7 +392,11 @@ class MultiLinearAgents:
             self.inv_A = np.linalg.inv(self.A)
 
     def _update_inv_A_A_b_local(self, last_k_or_arm, last_r, t):
-        """Update A and b from observation."""
+        """Update A and b from observation.
+
+        Parameters
+        ----------
+        """
         inv_A_exact = t % self.te == 0
 
         self.A_local_update = np.zeros((self.d, self.d))
@@ -333,7 +418,11 @@ class MultiLinearAgents:
             self.inv_A_local = np.linalg.inv(self.A_local)
 
     def _update_all_statistics(self, observation, reward):
-        """Update all statistics (local and shared). """
+        """Update all statistics (local and shared).
+
+        Parameters
+        ----------
+        """
         # fetch and rename main variables
         last_k_or_arm = observation['last_arm_pulled']
         last_r = reward
@@ -356,44 +445,33 @@ class MultiLinearAgents:
     @property
     def best_arm(self):
         """Return the estimated best arm if the estimation is avalaible, None
-        if not."""
+        if not.
+
+        Parameters
+        ----------
+        """
         return self.arms.best_arm(self.theta_hat)
 
     def select_default_arm(self):
-        """Select the 'default arm'."""
+        """Select the 'default arm'.
+
+        Parameters
+        ----------
+        """
         return _select_default_arm(arm_entries=None)
 
 
-class Agent:
-    """ Abstract class for an agent.
+class SingleMABAgentBase:
+    """MAB agent that only handle a single-agents setting.
 
     Parameters
     ----------
-    K : int, number of arms to consider.
-    seed : None, int, random-instance, (default=None), random-instance
-        or random-seed used to initialize the random-instance
     """
-
     def __init__(self, K, seed=None):
         """Init."""
         self.K = K
         self.rng = check_random_state(seed)
 
-    def randomly_select_arm(self):
-        """Randomly select an arm."""
-        k = self.rng.randint(self.K)
-        return int(k)
-
-    def randomly_select_one_arm_from_best_arms(self, best_arms):
-        """Randomly select a best arm in a tie case."""
-        if len(best_arms) > 1:
-            idx = self.rng.randint(0, len(best_arms))
-            k = best_arms[idx]
-
-        else:
-            k = best_arms
-
-        return int(k)
-
-    def act(self, observation, reward):
-        raise NotImplementedError
+    def select_default_arm(self):
+        """Select the 'default arm'."""
+        return 0

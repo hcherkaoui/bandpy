@@ -4,9 +4,10 @@
 import pytest
 import numpy as np
 from scipy import linalg
-from bandpy.compils import _fast_inv_sherman_morrison, _K_func
+
+from bandpy._compils import _fast_inv_sherman_morrison, _K_func
+from bandpy._checks import check_random_state
 from bandpy.utils import tests_set_up
-from bandpy.checks import check_random_state
 
 
 @pytest.mark.parametrize('d', [2, 10])

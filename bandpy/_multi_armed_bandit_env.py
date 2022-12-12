@@ -4,10 +4,10 @@
 import collections
 import numpy as np
 
-from .base import BanditEnv
+from ._base import BanditEnvBase
 
 
-class BernoulliKBandit(BanditEnv):
+class BernoulliKBandit(BanditEnvBase):
     """BernoulliKBandit class to define a Bernoulli bandit with K arms.
 
     Parameters
@@ -41,11 +41,17 @@ class BernoulliKBandit(BanditEnv):
         self.best_arm = np.argmax(self.p)
         self.best_reward = np.max(self.p)
 
+    def update_agent_stats(self, name_agent, y, no_noise_y):
+        y_max = np.max(self.mu)
+        y_min = np.min(self.mu)
+        self._update_agent_stats(name_agent, y, no_noise_y, y_max, y_min)
+
     def compute_reward(self, name_agent, k):
-        return int(self.rng.rand() <= self.p[k])
+        y = no_noise_y = int(self.rng.rand() <= self.p[k])
+        return y, no_noise_y
 
 
-class GaussianKBandit(BanditEnv):
+class GaussianKBandit(BanditEnvBase):
     """'GaussianKBandit' class to define a Gaussian bandit with K arms.
 
     Parameters
@@ -95,5 +101,12 @@ class GaussianKBandit(BanditEnv):
         self.best_arm = np.argmax(self.mu)
         self.best_reward = np.max(self.mu)
 
+    def update_agent_stats(self, name_agent, y, no_noise_y):
+        y_max = np.max(self.mu)
+        y_min = np.min(self.mu)
+        self._update_agent_stats(name_agent, y, no_noise_y, y_max, y_min)
+
     def compute_reward(self, name_agent, k):
-        return self.mu[k] + self.sigma[k] * self.rng.randn()
+        y = self.mu[k] + self.sigma[k] * self.rng.randn()
+        no_noise_y = self.mu[k]
+        return y, no_noise_y

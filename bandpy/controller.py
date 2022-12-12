@@ -6,13 +6,13 @@ import numpy as np
 from scipy import linalg, optimize
 import networkx as nx
 
-from .base import Controller
-from .linear_agents import LinUCB
-from .compils import _K_func
-from .checks import check_random_state, check_N_and_agent_names
+from ._base import ControllerBase
+from ._linear_bandit_agents import LinUCB
+from ._compils import _K_func
+from ._checks import check_random_state, check_N_and_agent_names
 
 
-class DecentralizedController(Controller):
+class DecentralizedController(ControllerBase):
     """DecentralizedController class to define a simple decentralized
     multi-agents setting.
     """
@@ -47,7 +47,7 @@ class DecentralizedController(Controller):
         return actions
 
 
-class ClusteringController(Controller):
+class ClusteringController(ControllerBase):
     """ClusteringController class to define a simple clustered
     multi-agents.
     """
