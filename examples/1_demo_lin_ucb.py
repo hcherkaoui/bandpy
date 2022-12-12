@@ -1,7 +1,7 @@
 """ Simple example with LinUCB policy.
 
 Launch it with ::
-    $ python demo_lin_ucb.py
+    $ python 1_demo_lin_ucb.py
 
 """
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.fr>
@@ -12,15 +12,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from bandpy import run_trials, env, controller, agents, utils
 
-import matplotlib as mpl
-mpl.rcParams['text.usetex'] = True
-mpl.rcParams['font.size'] = 16
-mpl.rcParams['text.latex.preamble'] = (r'\usepackage{amsmath}'
-                                       r'\usepackage{amssymb}')
-
-
 plt.style.use('tableau-colorblind10')
 MAX_RANDINT = 10000
+
 
 ###############################################################################
 # main
@@ -146,3 +140,10 @@ if __name__ == '__main__':
         print(f"[main] Saving plot under '{args.fig_fname}'.")
 
     plt.savefig(args.fig_fname, dpi=300)
+
+###############################################################################
+# Runtime
+delta_t = time.gmtime(time.time() - t0_total)
+delta_t = time.strftime("%H h %M min %S s", delta_t)
+if args.verbose:
+    print(f"[Main] Script runs in {delta_t}.")
