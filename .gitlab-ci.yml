@@ -29,3 +29,10 @@ unit-test:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+
+example:
+  stage: example
+  script:
+    - cd examples/
+    - python 0_demo_mab_benchmark.py
+    - python 1_demo_lin_ucb.py
