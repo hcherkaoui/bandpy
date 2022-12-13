@@ -11,7 +11,7 @@ from .utils import convert_grid_to_list
 def run_one_trial(env,
                   controller,
                   controller_stop=False,
-                  seed=None):
+                  seed=None):  # pragma: no cover
     """ Run on trial of 'controller' with environment 'env'.
 
     Parameters
@@ -26,19 +26,6 @@ def run_one_trial(env,
 
     Return
     ------
-    T : int, number of iterations done.
-
-    mean_regret : float, average regret for all agents.
-
-    mean_reward : float, average cumulative reward for all agents.
-
-    mean_best_reward : float, average cumulative best reward for all agents.
-
-    mean_worst_reward : float, average cumulative worst reward for all agents.
-
-    best_arms : dict, dictionary with agent_name as keys and index of the
-        estimated best arm as values.
-
     controller : controller-class, controller class for later inspection.
 
     env : env-class, environment class for later inspection.

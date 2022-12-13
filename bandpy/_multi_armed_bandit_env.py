@@ -107,6 +107,6 @@ class GaussianKBandit(BanditEnvBase):
         self._update_agent_stats(name_agent, y, no_noise_y, y_max, y_min)
 
     def compute_reward(self, name_agent, k):
-        y = self.mu[k] + self.sigma[k] * self.rng.randn()
+        noise = self.sigma[k] * self.rng.randn()
         no_noise_y = self.mu[k]
-        return y, no_noise_y
+        return no_noise_y + noise, no_noise_y

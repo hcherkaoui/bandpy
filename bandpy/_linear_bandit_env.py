@@ -148,7 +148,6 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
         Parameters
         ----------
         """
-
         theta_idx = self.theta_per_agent[name_agent]
 
         y_max = self.best_reward[theta_idx]
@@ -157,8 +156,11 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
         self._update_agent_stats(name_agent, y, no_noise_y, y_max, y_min)
 
     def compute_reward(self, agent_name, k_or_arm):
-        """Compute the reward associated to the given arm or arm-index."""
+        """Compute the reward associated to the given arm or arm-index.
 
+        Parameters
+        ----------
+        """
         if isinstance(k_or_arm, (int, np.integer)):
             x_k = self.arms[k_or_arm].reshape((self.d, 1))
 
@@ -173,7 +175,7 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
         return noise + no_noise_y, no_noise_y
 
 
-class DatasetEnv(BanditEnvBase):
+class DatasetEnv(BanditEnvBase):  # pragma: no cover
     """ Environment based on a real dataset. """
 
     def __init__(self, T, N, K, d, dirname, sigma=0.0, seed=None):
@@ -242,7 +244,7 @@ class DatasetEnv(BanditEnvBase):
         return noise + no_noise_y, no_noise_y
 
 
-class MovieLensEnv(DatasetEnv):
+class MovieLensEnv(DatasetEnv):  # pragma: no cover
     """ Movie-Lens Bandit environment. """
 
     def __init__(self, T, N, K, d, sigma=1.0,
@@ -259,7 +261,7 @@ class MovieLensEnv(DatasetEnv):
         return movie_lens_loader(dirname, N, K, d)
 
 
-class YahooEnv(DatasetEnv):
+class YahooEnv(DatasetEnv):  # pragma: no cover
     """ Yahoo Bandit environment. """
 
     def __init__(self, T, N, K, d, sigma=1.0,
