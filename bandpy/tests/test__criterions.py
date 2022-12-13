@@ -13,7 +13,7 @@ from bandpy._criterions import (f_neg_ucb, grad_neg_ucb, f_neg_scalar_prod,
 @pytest.mark.parametrize('d', [2, 10])
 @pytest.mark.parametrize('seed', [0, 1])
 def test_f_neg_scalar_prod(d, seed):
-    """ Test the function of 'f_neg_scalar_prod'. """
+    """Test the function of 'f_neg_scalar_prod'."""
     set_up = tests_set_up(d=d, seed=seed)
 
     inv_A = set_up['inv_A']
@@ -32,7 +32,7 @@ def test_f_neg_scalar_prod(d, seed):
 @pytest.mark.parametrize('d', [2, 10])
 @pytest.mark.parametrize('seed', [0, 1])
 def test_f_neg_ucb(d, seed):
-    """ Test the function of 'f_neg_ucb'. """
+    """Test the function of 'f_neg_ucb'."""
     set_up = tests_set_up(d=d, seed=seed)
 
     inv_A = set_up['inv_A']
@@ -54,7 +54,7 @@ def test_f_neg_ucb(d, seed):
 @pytest.mark.parametrize('d', [2, 10])
 @pytest.mark.parametrize('seed', [0, 1])
 def test_grad_neg_ucb(d, seed):
-    """ Test the gradient of 'grad_neg_ucb'. """
+    """Test the gradient of 'grad_neg_ucb'."""
     set_up = tests_set_up(d=d, seed=seed)
 
     inv_A = set_up['inv_A']
@@ -80,7 +80,7 @@ def test_grad_neg_ucb(d, seed):
 @pytest.mark.parametrize('d', [2, 10])
 @pytest.mark.parametrize('seed', [0, 1])
 def test_grad_neg_scalar_prod(d, seed):
-    """ Test the gradient of 'grad_neg_scalar_prod'. """
+    """Test the gradient of 'grad_neg_scalar_prod'."""
     set_up = tests_set_up(d=d, seed=seed)
 
     inv_A = set_up['inv_A']

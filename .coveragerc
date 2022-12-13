@@ -10,6 +10,7 @@ omit =
     */env.py
     */agents.py
     */plotting.py
+    */_loaders.py
     */tests/*
 
 [report]
