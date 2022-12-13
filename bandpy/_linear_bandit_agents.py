@@ -6,11 +6,9 @@ from scipy import optimize
 
 from ._base import MultiLinearAgentsBase
 from ._criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
-from ._arms import LinearArms, _select_default_arm
-from ._checks import check_random_state
+from ._arms import LinearArms
 from ._compils import _fast_inv_sherman_morrison
 from .utils import get_d
-from .__init__ import MAX_K
 
 
 class LinUniform(MultiLinearAgentsBase):
@@ -25,41 +23,28 @@ class LinUniform(MultiLinearAgentsBase):
     def __init__(self, arms=None, arm_entries=None, lbda=1.0, te=10,
                  seed=None):
         """Init."""
+        # init internal arms class
+        self.arms = LinearArms(criterion_func=None,
+                               criterion_kwargs=None,
+                               criterion_grad=None,
+                               criterion_grad_kwargs=None,
+                               arms=arms, arm_entries=arm_entries)
 
-        d = get_d(arms=arms, arm_entries=arm_entries)
+        # init last variables
+        self.K = self.arms.K
 
         # init internal variables (inv_A, A, ...)
-        super().__init__(d=d, lbda=lbda, te=te, seed=seed)
-
-        if arms is not None:
-            self.arms = arms
-            self.arm_entries = None
-            self.K = len(self.arms)
-
-        elif arm_entries is not None:
-            self.arms = None
-            self.arm_entries = arm_entries
-            log10_K = np.sum([np.log10(len(entry_vals))
-                              for entry_vals in arm_entries.values()])
-            self.K = int(10**log10_K) if log10_K <= np.log10(MAX_K) else np.inf
-
-        else:
-            raise ValueError("To init 'LinUCB' class, either pass 'arms'"
-                             " and 'arm_entries', none of them was given.")
-
-        self.rng = check_random_state(seed)
-
-        super().__init__(d=d, lbda=lbda, te=te, seed=seed)
+        super().__init__(arms=self.arms, lbda=lbda, te=te, seed=seed)
 
     def select_default_arm(self):
         """Select the 'default arm'."""
-        return _select_default_arm(arm_entries=self.arm_entries)
+        return self.arms.select_default_arm()
 
     def act(self, observation, reward):
         """Select an arm."""
         self._update_all_statistics(observation, reward)
 
-        if self.arms is not None:
+        if self.arms.return_arm_index:
             return self.rng.randint(self.K)
 
         else:
@@ -79,19 +64,14 @@ class LinUCB(MultiLinearAgentsBase):
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
-
     def __init__(self, alpha, arms=None, arm_entries=None,
                  lbda=1.0, te=10, seed=None):
         """Init."""
-
         d = get_d(arms=arms, arm_entries=arm_entries)
 
-        # init internal variables (inv_A, A, ...)
-        super().__init__(d=d, lbda=lbda, te=te, seed=seed)
-
         # init internal arms class
-        criterion_kwargs = dict(alpha=alpha, inv_A=self.inv_A_local)
-        criterion_grad_kwargs = dict(alpha=alpha, inv_A=self.inv_A_local)
+        criterion_kwargs = dict(alpha=alpha, inv_A=np.eye(d) / lbda)
+        criterion_grad_kwargs = dict(alpha=alpha, inv_A=np.eye(d) / lbda)
         self.arms = LinearArms(criterion_func=f_neg_ucb,
                                criterion_kwargs=criterion_kwargs,
                                criterion_grad=grad_neg_ucb,
@@ -101,6 +81,9 @@ class LinUCB(MultiLinearAgentsBase):
         # init last variables
         self.alpha = alpha
         self.K = self.arms.K
+
+        # init internal variables (inv_A, A, ...)
+        super().__init__(arms=self.arms, lbda=lbda, te=te, seed=seed)
 
     def select_default_arm(self):
         """Select the 'default arm'."""

@@ -344,13 +344,14 @@ class MultiLinearAgentsBase:
     Parameters
     ----------
     """
-    def __init__(self, d, lbda=1.0, te=10, seed=None):
+    def __init__(self, arms, lbda=1.0, te=10, seed=None):
         """Init."""
-        self.d = d
-
         self.te = te  # frequencie of exacte inv_A computation
 
         self.lbda = lbda
+
+        self.arms = arms
+        self.d = self.arms.d
 
         # shared variables
         self.A = np.eye(self.d)
