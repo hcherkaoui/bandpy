@@ -36,3 +36,4 @@ example:
     - cd examples/
     - python 0_demo_mab_benchmark.py
     - python 1_demo_lin_ucb.py
+    - python 2_demo_quad_ucb.py

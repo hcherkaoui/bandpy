@@ -36,8 +36,8 @@ class DecentralizedController(ControllerBase):
 
             agent = self.agents[agent_name]
 
-            k = agent.act(observation, reward)
-            actions[agent_name] = k
+            selected_k_or_arm = agent.act(observation, reward)
+            actions[agent_name] = selected_k_or_arm
 
             if hasattr(agent, 'done'):
                 dones.append(agent.done)
@@ -86,7 +86,7 @@ class ClusteringController(ControllerBase):
         return actions
 
     def act(self, observations, rewards):
-        """Make each agent choose an arm in a decentralized way."""
+        """Make each agent choose an arm in a clustered way."""
 
         agent_0 = list(observations.keys())[0]
         t = observations[agent_0]['t']  # fetch the iteration index
@@ -120,15 +120,16 @@ class ClusteringController(ControllerBase):
 
             label = self.agent_labels[agent_name]
 
-            observation_shared = list(observations_per_cluster[label]['last_arm_pulled'])  # noqa
-            observation_local = observations[agent_name]['last_arm_pulled']
-            complete_observation = (observation_local, observation_shared)
+            selected_k_or_arms_shared = list(observations_per_cluster[label]['last_arm_pulled'])  # noqa
+            selected_k_or_arms_local = observations[agent_name]['last_arm_pulled']  # noqa
+            complete_selected_k_or_arms = (selected_k_or_arms_local, selected_k_or_arms_shared)  # noqa
 
             reward_shared = list(rewards_per_cluster[label])
             reward_local = float(observations[agent_name]['last_reward'])
             complete_reward = (reward_local, reward_shared)
 
-            observations[agent_name]['last_arm_pulled'] = complete_observation
+            # overwrite the last observation/reward for each agent
+            observations[agent_name]['last_arm_pulled'] = complete_selected_k_or_arms  # noqa
             rewards[agent_name] = complete_reward
 
         self.l_labels.append([self.agent_labels[agent_name]

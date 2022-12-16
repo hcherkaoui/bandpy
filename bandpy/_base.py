@@ -6,7 +6,6 @@ import numpy as np
 from ._compils import _fast_inv_sherman_morrison
 from .utils import tolerant_mean
 from ._checks import check_random_state, check_actions
-from ._arms import _select_default_arm
 
 
 class BanditEnvBase():
@@ -459,7 +458,7 @@ class MultiLinearAgentsBase:
         Parameters
         ----------
         """
-        return _select_default_arm(arm_entries=None)
+        return self.arms.select_default_arm(arm_entries=None)
 
 
 class SingleMABAgentBase:

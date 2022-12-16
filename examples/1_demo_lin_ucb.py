@@ -46,7 +46,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-jobs', type=int, default=1,
                         help='Number of jobs to run in parallel the trials.')
     parser.add_argument('--fig-fname', type=str,
-                        default='r__cum_r_evo.pdf',
+                        default='1_demo_lin_ucb.pdf',
                         help='Figure filename.')
     parser.add_argument('--verbose', action='store_true',
                         help='Verbosity level.')

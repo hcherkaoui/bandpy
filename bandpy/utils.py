@@ -173,10 +173,13 @@ def tests_set_up(d=2, seed=None):
     rng = check_random_state(seed)
     set_up = dict()
 
-    set_up['seed'] = rng
+    set_up['seed'] = seed
+    set_up['rng'] = rng
     set_up['inv_A'] = np.eye(d)
     set_up['x_k'] = rng.randn(d, 1)
     set_up['theta'] = rng.randn(d, 1)
     set_up['alpha'] = 1.0
+    set_up['lbda'] = 1.0
+    set_up['te'] = 10
 
     return set_up

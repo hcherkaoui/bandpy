@@ -6,7 +6,7 @@ from scipy import optimize
 
 from ._base import MultiLinearAgentsBase
 from ._criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
-from ._arms import LinearArms
+from ._arms import LinearArms, QuadraticArms, arm_to_quadratic_arm
 from ._compils import _fast_inv_sherman_morrison
 from .utils import get_d
 
@@ -49,7 +49,7 @@ class LinUniform(MultiLinearAgentsBase):
 
         else:
             random_arm = []
-            for entry_vals in self.arm_entries.values():
+            for entry_vals in self.arms._arm_entries.values():
                 random_arm.append(self.rng.choice(entry_vals))
             return np.array(random_arm, dtype=float).reshape((self.d, 1))
 
@@ -91,6 +91,78 @@ class LinUCB(MultiLinearAgentsBase):
 
     def act(self, observation, reward):
         """Select an arm."""
+
+        self._update_all_statistics(observation, reward)
+
+        kwargs = dict(alpha=self.alpha, inv_A=self.inv_A_local)
+
+        selected_k_or_arm = self.arms.select_arm(
+                                self.theta_hat_local,
+                                criterion_kwargs=kwargs,
+                                criterion_grad_kwargs=kwargs)
+
+        return selected_k_or_arm
+
+
+class QuadUCB(MultiLinearAgentsBase):
+    """ Quadratic Upper confidence bound class to define the UCB algorithm.
+
+    Parameters
+    ----------
+    arms : list of np.array, list of arms.
+    alpha: float, confidence probability parameter
+    seed : None, int, random-instance, (default=None), random-instance
+        or random-seed used to initialize the random-instance
+    """
+    def __init__(self, alpha, arms=None, arm_entries=None,
+                 lbda=1.0, te=10, seed=None):
+        """Init."""
+        d = get_d(arms=arms, arm_entries=arm_entries)
+
+        # init internal arms class
+        criterion_kwargs = dict(alpha=alpha, inv_A=np.eye(2 * d + 1) / lbda)
+        criterion_grad_kwargs = dict(alpha=alpha, inv_A=np.eye(2 * d + 1) / lbda)  # noqa
+        self.arms = QuadraticArms(criterion_func=f_neg_ucb,
+                                  criterion_kwargs=criterion_kwargs,
+                                  criterion_grad=grad_neg_ucb,
+                                  criterion_grad_kwargs=criterion_grad_kwargs,
+                                  arms=arms, arm_entries=arm_entries)
+
+        # init last variables
+        self.alpha = alpha
+        self.K = self.arms.K
+
+        # init internal variables (inv_A, A, ...)
+        super().__init__(arms=self.arms, lbda=lbda, te=te, seed=seed)
+
+    def select_default_arm(self):
+        """Select the 'default arm'."""
+        return self.arms.select_default_arm()
+
+    def act(self, observation, reward):
+        """Select an arm."""
+
+        if isinstance(observation['last_arm_pulled'], tuple):
+
+            selected_k_or_arms_local, selected_k_or_arms_shared = observation['last_arm_pulled']  # noqa
+
+            if isinstance(selected_k_or_arms_local, np.ndarray):
+                selected_k_or_arms_local = arm_to_quadratic_arm(selected_k_or_arms_local)  # noqa
+
+            if isinstance(selected_k_or_arms_shared[0], np.ndarray):
+                selected_k_or_arms_shared = [arm_to_quadratic_arm(selected_k_or_arm_shared)  # noqa
+                                             for selected_k_or_arm_shared in selected_k_or_arms_shared]  # noqa
+
+            observation['last_arm_pulled'] = (selected_k_or_arms_local, selected_k_or_arms_shared)  # noqa
+
+        else:
+
+            selected_k_or_arms_local = observation['last_arm_pulled']
+
+            if isinstance(selected_k_or_arms_local, np.ndarray):
+                selected_k_or_arms_local = observation['last_arm_pulled']
+
+                observation['last_arm_pulled'] = arm_to_quadratic_arm(selected_k_or_arms_local)  # noqa
 
         self._update_all_statistics(observation, reward)
 
