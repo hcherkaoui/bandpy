@@ -70,9 +70,9 @@ no_noise_R_T : float, no_noise_R_t[-1], sum_{s=1}^T y_max - no_noise_y_s,
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 from .info import __version__
-from ._runners import (run_one_trial, run_trials,
-                       run_trials_with_grid_search_on_agents,
-                       run_trials_with_grid_search_on_controller)
+from .runners import (run_one_trial, run_trials,
+                      run_trials_with_grid_search_on_agents,
+                      run_trials_with_grid_search_on_controller)
 
 
 __version__ = __version__

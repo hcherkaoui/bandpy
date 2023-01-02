@@ -29,6 +29,11 @@ def tolerant_mean(arrs):
     return _tolerant_concat(arrs).mean(axis=-1)
 
 
+def tolerant_std(arrs):
+    """Compute the mean of time-serie of different length."""
+    return _tolerant_concat(arrs).std(axis=-1)
+
+
 def tolerant_stats(arrs):
     """Compute the mean, std, max and min of time-serie of different length."""
     all_lengths = [len(arr) for arr in arrs]

@@ -99,6 +99,32 @@ def check_arm_entries(arm_entries):
     return arm_entries
 
 
+def check_theta_idx(N, n_thetas, theta_idx=None, shuffle_labels=False,
+                    seed=None):
+    """Check that 'check_theta_idx' is properly formatted."""
+    if theta_idx is not None:
+        msg = "'theta_idx' does not provide a label for each agent"
+        assert N == len(theta_idx), msg
+
+        msg = (f"'theta_idx' does not provide enough unique labels "
+               f"({n_thetas}), got {np.unique(theta_idx)}")
+        assert n_thetas == len(np.unique(theta_idx)), msg
+
+        return theta_idx
+
+    else:
+        theta_idx = []  # [0 0 0 ... 1 1 ... 2 ... 2 2]
+        for theta_i in range(n_thetas):
+            theta_idx += [theta_i] * int(N / n_thetas)
+        theta_idx += [theta_i] * (N - len(theta_idx))
+
+        if shuffle_labels:
+            rng = check_random_state(seed)
+            rng.shuffle(theta_idx)
+
+        return theta_idx
+
+
 def check_thetas_and_n_thetas(d=None, thetas=None, n_thetas=None,
                               theta_offset=0.0, seed=None):
     """Check the requested 'thetas setting' is properly formatted."""

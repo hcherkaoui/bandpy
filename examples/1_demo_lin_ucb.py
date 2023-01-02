@@ -4,13 +4,14 @@ Launch it with ::
     $ python 1_demo_lin_ucb.py
 
 """
+
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.fr>
 
 import time
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-from bandpy import run_trials, env, controller, agents, utils
+from bandpy import run_trials, env, controllers, agents, utils
 
 plt.style.use('tableau-colorblind10')
 MAX_RANDINT = 10000
@@ -70,7 +71,7 @@ if __name__ == '__main__':
                     'seed': args.seed,
                     }
 
-    bandit_controller = controller.DecentralizedController(
+    bandit_controller = controllers.DecentralizedController(
                     N=args.N, agent_cls=agent_cls, agent_kwargs=agent_kwargs)
 
     rng = utils.check_random_state(args.seed)
@@ -82,7 +83,7 @@ if __name__ == '__main__':
         print("[main] Running simulation.")
 
     trial_results = run_trials(bandit_env, bandit_controller,
-                               controller_stop=False, seeds=seeds,
+                               early_stopping=False, seeds=seeds,
                                n_jobs=args.n_jobs, verbose=args.verbose)
 
     ###########################################################################

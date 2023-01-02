@@ -6,9 +6,9 @@ from scipy import optimize
 
 from ._base import BanditEnvBase
 from ._loaders import movie_lens_loader, yahoo_loader
-from ._checks import (check_random_state, check_K_arms_arm_entries,
-                      check_thetas_and_n_thetas)
-from ._criterions import f_neg_scalar_prod, grad_neg_scalar_prod
+from .._checks import (check_random_state, check_K_arms_arm_entries,
+                       check_thetas_and_n_thetas, check_theta_idx)
+from .._criterions import f_neg_scalar_prod, grad_neg_scalar_prod
 
 
 DEFAULT_DIR_DATASET_MOVIELENS = ("/mnt/c/Users/hwx1143141/Desktop/datasets/"
@@ -43,19 +43,31 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
     """
 
     def __init__(self, N, T, d, K=None, arms=None, arm_entries=None,
-                 n_thetas=None, thetas=None, sigma=1.0, theta_offset=0.0,
-                 shuffle_labels=True, seed=None):
+                 n_thetas=None, theta_idx=None, thetas=None, sigma=1.0,
+                 theta_offset=0.0, shuffle_labels=True, seed=None):
         """Init."""
         if d < 2:
             raise ValueError(f"Dimendion 'd' should be >= 2, got {d}")
 
-        thetas, n_thetas = check_thetas_and_n_thetas(d=d, thetas=thetas,
-                                                     n_thetas=n_thetas,
-                                                     theta_offset=theta_offset,
-                                                     seed=seed)
+        # set the bandit parameter along with their cluster
+        thetas, n_thetas = check_thetas_and_n_thetas(
+                                        d=d, thetas=thetas, n_thetas=n_thetas,
+                                        theta_offset=theta_offset, seed=seed)
+
         self.thetas = thetas
         self.n_thetas = n_thetas
 
+        self.theta_idx = check_theta_idx(N=N, n_thetas=n_thetas,
+                                         theta_idx=theta_idx,
+                                         shuffle_labels=shuffle_labels,
+                                         seed=seed)
+
+        theta_per_agent = dict()
+        for i, theta_i in enumerate(self.theta_idx):
+            theta_per_agent[f"agent_{i}"] = theta_i
+        self.theta_per_agent = theta_per_agent
+
+        # set the arm setting
         parameters = check_K_arms_arm_entries(d=d,
                                               arms=arms,
                                               arm_entries=arm_entries,
@@ -68,17 +80,16 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
         self.arm_entries = arm_entries
         self.K = K
 
+        # misc
         self.N = N
         self.d = d
 
         self.shuffle_labels = shuffle_labels
         self.rng = check_random_state(seed)
 
-        self.theta_per_agent = self._assign_agent_models()
-
         self.sigma = sigma
 
-        # deactivate best_arm / best_reward
+        # store best_arm / best_reward
         self.best_arm = dict()
         self.best_reward = dict()
         self.worst_reward = dict()
@@ -124,23 +135,6 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
                 self.best_arm[i] = best_arm_
 
         super().__init__(T=T, seed=self.rng)
-
-    def _assign_agent_models(self):
-        """Assign a theta for each agent."""
-
-        theta_idx = []  # [0 0 0 ... 1 1 ... 2 ... 2 2]
-        for theta_i in range(self.n_thetas):
-            theta_idx += [theta_i] * int(self.N / self.n_thetas)
-        theta_idx += [theta_i] * (self.N - len(theta_idx))
-
-        if self.shuffle_labels:
-            self.rng.shuffle(theta_idx)
-
-        theta_per_agent = dict()
-        for i, theta_i in enumerate(theta_idx):
-            theta_per_agent[f"agent_{i}"] = theta_i
-
-        return theta_per_agent
 
     def update_agent_stats(self, name_agent, y, no_noise_y):
         """Update all statistic as listed in __init__ doc.

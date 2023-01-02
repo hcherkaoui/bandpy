@@ -1,101 +1,11 @@
-""" Bandpy. """
+""" Define all the runner with grid-search functions availables. """
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
-import copy
 from joblib import Parallel, delayed
 import numpy as np
 
-from .utils import convert_grid_to_list
-
-
-def run_one_trial(env,
-                  controller,
-                  controller_stop=False,
-                  seed=None):  # pragma: no cover
-    """ Run on trial of 'controller' with environment 'env'.
-
-    Parameters
-    ----------
-    env : env-class, environment instance.
-
-    controller : controller-class, controller instance.
-
-    controller_stop: bool, enable controller early-stopping.
-
-    seed : None, int, random-instance, seed for the trial.
-
-    Return
-    ------
-    controller : controller-class, controller class for later inspection.
-
-    env : env-class, environment class for later inspection.
-    """
-    # ensure to reset the environment
-    env.reset(seed=seed)
-
-    # trigger first observations
-    actions = controller.default_act()
-    observations, rewards, _, _ = env.step(actions)
-
-    while True:
-
-        # controller/environment interaction
-        actions = controller.act(observations, rewards)
-        observations, rewards, done, _ = env.step(actions)
-
-        # controller early-stopping
-        if controller_stop & controller.done:
-            break
-
-        # environement early-stopping
-        if done:
-            break
-
-    return controller, env
-
-
-def run_trials(env,
-               controller,
-               controller_stop=False,
-               seeds=None,
-               n_jobs=1,
-               verbose=True):
-    """Run in parallel 'run_one_trial' with the given parameters.
-
-    Parameters
-    ----------
-    env : env-class, environment instance.
-
-    controller : controller-class, controller instance.
-
-    controller_stop: bool, enable controller early-stopping.
-
-    seed : None, int, random-instance, seed for the trial.
-
-    n_jobs : int, number of CPU to use.
-
-    verbose : bool, enable verbose.
-
-    Return
-    ------
-    results : list, one-trial results, see 'run_one_trial' for more
-        information.
-    """
-    delayed_pool = []
-    for seed in seeds:
-
-        trial_kwargs = dict(
-            env=copy.deepcopy(env), controller=copy.deepcopy(controller),
-            controller_stop=controller_stop,
-            seed=seed)
-
-        delayed_pool.append(delayed(run_one_trial)(**trial_kwargs))
-
-    verbose_level = 100 if verbose else 0
-    trial_results = Parallel(n_jobs=n_jobs,
-                             verbose=verbose_level)(delayed_pool)
-
-    return trial_results
+from ..utils import convert_grid_to_list
+from ._runners import run_trials
 
 
 def run_trials_with_grid_search_on_agents(env_instance,

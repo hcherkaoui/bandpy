@@ -9,7 +9,7 @@ Launch it with ::
 import time
 import matplotlib.pyplot as plt
 import numpy as np
-from bandpy import run_trials, env, controller, agents, utils
+from bandpy import run_trials, env, controllers, agents, utils
 
 plt.style.use('tableau-colorblind10')
 MAX_RANDINT = 10000
@@ -43,7 +43,7 @@ if __name__ == '__main__':
                     'seed': seed,
                     }
 
-    bandit_controller = controller.DecentralizedController(
+    bandit_controller = controllers.DecentralizedController(
                     N=N, agent_cls=agent_cls, agent_kwargs=agent_kwargs)
 
     rng = utils.check_random_state(seed)
@@ -54,8 +54,8 @@ if __name__ == '__main__':
     print("[main] Running simulation.")
 
     trial_results = run_trials(bandit_env, bandit_controller,
-                               controller_stop=False, seeds=seeds,
-                               n_jobs=n_trials, verbose=True)
+                               early_stopping=False, seeds=seeds,
+                               n_jobs=n_trials, verbose=False)
 
     ###########################################################################
     # Gathering results

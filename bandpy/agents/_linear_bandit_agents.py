@@ -5,10 +5,10 @@ import numpy as np
 from scipy import optimize
 
 from ._base import MultiLinearAgentsBase
-from ._criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
-from ._arms import LinearArms, QuadraticArms, arm_to_quadratic_arm
-from ._compils import _fast_inv_sherman_morrison
-from .utils import get_d
+from .._criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
+from .._arms import LinearArms, QuadraticArms, arm_to_quadratic_arm
+from .._compils import _fast_inv_sherman_morrison
+from ..utils import get_d
 
 
 class LinUniform(MultiLinearAgentsBase):
@@ -306,7 +306,7 @@ class GreedyLinGapE(MultiLinearAgentsBase):
                 self.done = True  # best arm identified
                 self.best_arm_hat = i
 
-            # arm selection
+            # greedy arm selection
             aa = []
             for x_k in self.arms:
                 x_k = x_k.reshape((self.d, 1))
