@@ -20,10 +20,11 @@ def test_LinearArms(d, seed):
     theta = set_up['theta']
     inv_A = set_up['inv_A']
     alpha = set_up['alpha']
+    t = set_up['t']
     n_vals_per_dim = 2
 
-    criterion_kwargs = dict(alpha=alpha, inv_A=inv_A)
-    criterion_grad_kwargs = dict(alpha=alpha, inv_A=inv_A)
+    criterion_kwargs = dict(alpha=alpha, t=t, inv_A=inv_A)
+    criterion_grad_kwargs = dict(alpha=alpha, t=t, inv_A=inv_A)
 
     # define arm_entries and corresponding arms
     arm_entries = generate_gaussian_arm_entries(n_vals_per_dim=n_vals_per_dim,

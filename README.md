@@ -4,7 +4,16 @@
 Bandpy
 ======
 
-Bandpy: multi-arms / multi-agents bandit Python package.
+
+Short description:
+------------------
+Multi-armed single/multi-agent bandits Python package.
+
+Description:
+------------
+Bandpy aims to provide all classical agents and controllers on a
+various synthetic and real data environnments to ease benchmark for research
+and R&D purposes.
 
 Important links
 ===============
@@ -23,7 +32,7 @@ In order install the package, run::
 To validate the installation, run::
 
     cd examples/
-    jupyter-notebook  # to play around with the examples
+    python 1_demo_lin_ucb.py  # to play around with the examples
 
 
 Dependencies

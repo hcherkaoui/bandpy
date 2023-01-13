@@ -1,4 +1,5 @@
 """ Define the arm class and routines. """
+
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import numpy as np
@@ -6,10 +7,10 @@ from scipy import optimize
 
 from ._criterions import f_neg_scalar_prod, grad_neg_scalar_prod
 from .utils import proj_on_arm_entries
-from .__init__ import MAX_K
 
 
 DEFAULT_ARM_IDX = 0
+MAX_K = 10000
 
 
 def _select_arm(return_arm_index, arms, arm_entries, theta, func,

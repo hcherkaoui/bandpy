@@ -19,8 +19,9 @@ def test_f_neg_scalar_prod(d, seed):
     inv_A = set_up['inv_A']
     x_k = set_up['x_k']
     theta = set_up['theta']
+    t = set_up['t']
 
-    kwargs = dict(alpha=0.0, inv_A=inv_A)
+    kwargs = dict(alpha=0.0, t=t, inv_A=inv_A)
 
     ref_scalar_prod_ = f_neg_ucb(x_k, theta, **kwargs)
     scalar_prod_ = f_neg_scalar_prod(x_k, theta, **kwargs)
@@ -39,13 +40,14 @@ def test_f_neg_ucb(d, seed):
     x_k = set_up['x_k']
     theta = set_up['theta']
     alpha = set_up['alpha']
+    t = set_up['t']
 
-    kwargs = dict(alpha=alpha, inv_A=inv_A)
+    kwargs = dict(alpha=alpha, t=t, inv_A=inv_A)
 
     x_k = x_k.ravel()
     theta = theta.ravel()
 
-    f_ucb_x_ref = theta.T.dot(x_k) + alpha * np.sqrt(x_k.T.dot(inv_A).dot(x_k))
+    f_ucb_x_ref = theta.T.dot(x_k) + alpha * np.sqrt(x_k.T.dot(inv_A).dot(x_k) * np.log(t + 1))  # noqa
     f_ucb_x = - f_neg_ucb(x_k, theta, **kwargs)
 
     np.testing.assert_allclose(f_ucb_x, f_ucb_x_ref, rtol=1e-5, atol=1e-3)
@@ -61,8 +63,9 @@ def test_grad_neg_ucb(d, seed):
     x_k = set_up['x_k']
     theta = set_up['theta']
     alpha = set_up['alpha']
+    t = set_up['t']
 
-    kwargs = dict(alpha=alpha, inv_A=inv_A)
+    kwargs = dict(alpha=alpha, t=t, inv_A=inv_A)
 
     def finite_grad(x):
         def f(x):
@@ -87,8 +90,9 @@ def test_grad_neg_scalar_prod(d, seed):
     x_k = set_up['x_k']
     theta = set_up['theta']
     alpha = set_up['alpha']
+    t = set_up['t']
 
-    kwargs = dict(alpha=alpha, inv_A=inv_A)
+    kwargs = dict(alpha=alpha, t=t, inv_A=inv_A)
 
     def finite_grad(x):
         def f(x):

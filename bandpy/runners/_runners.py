@@ -1,8 +1,18 @@
 """ Define all the runner (without grid-search) functions availables. """
+
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import copy
 from joblib import Parallel, delayed
+
+from ..controllers._controllers import (ControllerBase, SingleAgentController,
+                                        DynUCB)
+
+
+valid_controllers_class = (ControllerBase,  # base class
+                           SingleAgentController,  # proxy class
+                           DynUCB,  # SOTA class
+                           )
 
 
 def run_one_trial(env, agent_or_controller, early_stopping=False, seed=None):
@@ -25,28 +35,34 @@ def run_one_trial(env, agent_or_controller, early_stopping=False, seed=None):
 
     env : env-class, environment class for later inspection.
     """
+    # ensure to have a controller (as a proxy at least)
+    if not issubclass(type(agent_or_controller), valid_controllers_class):
+        controller = SingleAgentController(agent_or_controller)
+    else:
+        controller = agent_or_controller
+
     # ensure to reset the environment
     env.reset(seed=seed)
 
     # trigger first observations
-    action = agent_or_controller.default_act()
+    action = controller.default_act()
     observation, reward, _, _ = env.step(action)
 
     while True:
 
         # controller/environment interaction
-        action = agent_or_controller.act(observation, reward)
+        action = controller.act(observation, reward)
         observation, reward, done, _ = env.step(action)
 
-        # early-stopping
-        if early_stopping & agent_or_controller.done:
+        # controller early-stopping
+        if early_stopping and controller.done:
             break
 
-        # environement early-stopping
+        # environment early-stopping
         if done:
             break
 
-    return agent_or_controller, env
+    return controller, env
 
 
 def run_trials(env,

@@ -19,35 +19,39 @@ def grad_neg_scalar_prod(x, theta, **kwargs):
 
 
 @numba.jit(numba.float64(numba.float64,
+                         numba.float64,
                          numba.float64[:],
                          numba.float64[:],
                          numba.float64[:, :]),
            nopython=True, cache=True, fastmath=True)
-def _f_ucb(alpha, x, theta, inv_A):
-    _f = theta.T.dot(x) + alpha * np.sqrt(x.T.dot(inv_A).dot(x))
+def _f_ucb(alpha, t, x, theta, inv_A):
+    _f = theta.T.dot(x) + alpha * np.sqrt(x.T.dot(inv_A).dot(x) * np.log(t + 1))  # noqa
     return numba.float64(_f)
 
 
 def f_neg_ucb(x, theta, **kwargs):
     """UCB function criterion."""
     alpha = kwargs['alpha']
+    t = kwargs['t']
     inv_A = kwargs['inv_A']
-    return - _f_ucb(alpha, x.ravel(), theta.ravel(), inv_A)
+    return - _f_ucb(alpha, t, x.ravel(), theta.ravel(), inv_A)
 
 
 @numba.jit(numba.float64[:, :](numba.float64,
+                               numba.float64,
                                numba.float64[:],
                                numba.float64[:],
                                numba.float64[:, :]),
            nopython=True, cache=True, fastmath=True)
-def _grad_ucb(alpha, x, theta, inv_A):
+def _grad_ucb(alpha, t, x, theta, inv_A):
     d, _ = inv_A.shape
-    _grad = theta + alpha * inv_A.dot(x) / np.sqrt(x.T.dot(inv_A).dot(x))
+    _grad = theta + alpha * inv_A.dot(x) * np.sqrt(np.log(t + 1)) / np.sqrt(x.T.dot(inv_A).dot(x))  # noqa
     return _grad.reshape((d, 1))
 
 
 def grad_neg_ucb(x, theta, **kwargs):
     """Gradient of the UCB function criterion."""
     alpha = kwargs['alpha']
+    t = kwargs['t']
     inv_A = kwargs['inv_A']
-    return - _grad_ucb(alpha, x.ravel(), theta.ravel(), inv_A)
+    return - _grad_ucb(alpha, t, x.ravel(), theta.ravel(), inv_A)

@@ -83,7 +83,6 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
         # misc
         self.N = N
         self.d = d
-
         self.shuffle_labels = shuffle_labels
         self.rng = check_random_state(seed)
 

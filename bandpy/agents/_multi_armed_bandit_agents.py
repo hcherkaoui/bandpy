@@ -1,4 +1,5 @@
 """ Define all the MAB agents availables in Bandpy. """
+
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import numpy as np
@@ -34,21 +35,28 @@ class FollowTheLeader(SingleMABAgentBase):
                                 for k in range(self.K)]
         return np.argmax(mean_reward_per_arms)
 
-    def act(self, observation, reward):
+    def update_local(self, last_k, last_r, t):
+        """Update local variables.
+
+        Parameters
+        ----------
+        """
+        self.reward_per_arms[last_k].append(last_r)
+
+    def update_shared(self, last_k, last_r, t):
+        """Update local variables.
+
+        Parameters
+        ----------
+        """
+        pass
+
+    def act(self, t):
         """Select an arm.
 
         Parameters
         ----------
         """
-
-        # fetch and rename main variables
-        last_k = observation['last_arm_pulled']
-        last_r = reward
-
-        # update main statistic variables
-        self.reward_per_arms[last_k].append(last_r)
-
-        # arm selection
         return self.best_arm
 
 
@@ -76,7 +84,23 @@ class Uniform(SingleMABAgentBase):
         """
         return None
 
-    def act(self, observation, reward):
+    def update_local(self, last_k, last_r, t):
+        """Update local variables.
+
+        Parameters
+        ----------
+        """
+        pass
+
+    def update_shared(self, last_k, last_r, t):
+        """Update local variables.
+
+        Parameters
+        ----------
+        """
+        pass
+
+    def act(self, t):
         """Select an arm."""
         return self.rng.randint(self.K)
 
@@ -115,21 +139,29 @@ class EC(SingleMABAgentBase):
         """
         return self.estimated_best_arm
 
-    def act(self, observation, reward):
+    def update_local(self, last_k, last_r, t):
+        """Update local variables.
+
+        Parameters
+        ----------
+        """
+        self.reward_per_arms[last_k].append(last_r)
+
+    def update_shared(self, last_k, last_r, t):
+        """Update local variables.
+
+        Parameters
+        ----------
+        """
+        pass
+
+    def act(self, t):
         """Select an arm.
 
         Parameters
         ----------
         """
-
-        # fetch and rename main variables
-        t = observation['t']
-        last_k = observation['last_arm_pulled']
-        last_r = reward
-
-        # arm selection
         if t <= self.Te:
-            self.reward_per_arms[last_k].append(last_r)
             k = t % self.K
 
         elif (t > self.Te) and not self.done:
@@ -185,22 +217,29 @@ class UCB(SingleMABAgentBase):
                                 for k in range(self.K)]
         return np.argmax(mean_reward_per_arms)
 
-    def act(self, observation, reward):
+    def update_local(self, last_k, last_r, t):
+        """Update local variables.
+
+        Parameters
+        ----------
+        """
+        self.n_pulls_per_arms[last_k] += 1
+        self.reward_per_arms[last_k].append(last_r)
+
+    def update_shared(self, last_k, last_r, t):
+        """Update local variables.
+
+        Parameters
+        ----------
+        """
+        pass
+
+    def act(self, t):
         """Select an arm.
 
         Parameters
         ----------
         """
-
-        # fetch and rename main variables
-        last_k = observation['last_arm_pulled']
-        last_r = reward
-
-        # update main statistic variables
-        self.n_pulls_per_arms[last_k] += 1
-        self.reward_per_arms[last_k].append(last_r)
-
-        # arm selection
         uu = []
         for k in range(self.K):
             T_k = self.n_pulls_per_arms[k]

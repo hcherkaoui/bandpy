@@ -30,8 +30,18 @@ def tolerant_mean(arrs):
 
 
 def tolerant_std(arrs):
-    """Compute the mean of time-serie of different length."""
+    """Compute the std of time-serie of different length."""
     return _tolerant_concat(arrs).std(axis=-1)
+
+
+def tolerant_min(arrs):
+    """Compute the min of time-serie of different length."""
+    return _tolerant_concat(arrs).min(axis=-1)
+
+
+def tolerant_max(arrs):
+    """Compute the max of time-serie of different length."""
+    return _tolerant_concat(arrs).max(axis=-1)
 
 
 def tolerant_stats(arrs):
@@ -90,7 +100,7 @@ fill_mising_values = Memory('__cache__', verbose=0).cache(_fill_mising_values)
 def profile_me(func):  # pragma: no cover
     """ Profiling decorator, produce a report <func-name>.profile to be open as
     Place @profile_me on top of the desired function, then:
-    `python -m snakeviz  <func-name>.profile`
+    'python -m snakeviz <func-name>.profile'
     Parameters
     ----------
     func : func, function to profile
@@ -184,7 +194,7 @@ def tests_set_up(d=2, seed=None):
     set_up['x_k'] = rng.randn(d, 1)
     set_up['theta'] = rng.randn(d, 1)
     set_up['alpha'] = 1.0
+    set_up['t'] = 1
     set_up['lbda'] = 1.0
-    set_up['te'] = 10
 
     return set_up

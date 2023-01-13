@@ -1,4 +1,5 @@
 """ Define all the linear agents availables in Bandpy. """
+
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import numpy as np
@@ -20,8 +21,7 @@ class LinUniform(MultiLinearAgentsBase):
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
-    def __init__(self, arms=None, arm_entries=None, lbda=1.0, te=10,
-                 seed=None):
+    def __init__(self, arms=None, arm_entries=None, lbda=1.0, seed=None):
         """Init."""
         # init internal arms class
         self.arms = LinearArms(criterion_func=None,
@@ -34,16 +34,22 @@ class LinUniform(MultiLinearAgentsBase):
         self.K = self.arms.K
 
         # init internal variables (inv_A, A, ...)
-        super().__init__(arms=self.arms, lbda=lbda, te=te, seed=seed)
+        super().__init__(arms=self.arms, lbda=lbda, seed=seed)
 
     def select_default_arm(self):
         """Select the 'default arm'."""
         return self.arms.select_default_arm()
 
-    def act(self, observation, reward):
-        """Select an arm."""
-        self._update_all_statistics(observation, reward)
+    def update_local(self, last_k_or_arm, last_r, t):
+        """Update local variables."""
+        self._update_local(last_k_or_arm, last_r, t)
 
+    def update_shared(self, last_k_or_arm, last_r, t):
+        """Update shared variables."""
+        self._update_shared(last_k_or_arm, last_r, t)
+
+    def act(self, t):
+        """Select an arm."""
         if self.arms.return_arm_index:
             return self.rng.randint(self.K)
 
@@ -65,13 +71,13 @@ class LinUCB(MultiLinearAgentsBase):
         or random-seed used to initialize the random-instance
     """
     def __init__(self, alpha, arms=None, arm_entries=None,
-                 lbda=1.0, te=10, seed=None):
+                 lbda=1.0, seed=None):
         """Init."""
         d = get_d(arms=arms, arm_entries=arm_entries)
 
         # init internal arms class
-        criterion_kwargs = dict(alpha=alpha, inv_A=np.eye(d) / lbda)
-        criterion_grad_kwargs = dict(alpha=alpha, inv_A=np.eye(d) / lbda)
+        criterion_kwargs = dict(alpha=alpha, t=0, inv_A=np.eye(d) / lbda)
+        criterion_grad_kwargs = dict(alpha=alpha, t=0, inv_A=np.eye(d) / lbda)
         self.arms = LinearArms(criterion_func=f_neg_ucb,
                                criterion_kwargs=criterion_kwargs,
                                criterion_grad=grad_neg_ucb,
@@ -83,21 +89,26 @@ class LinUCB(MultiLinearAgentsBase):
         self.K = self.arms.K
 
         # init internal variables (inv_A, A, ...)
-        super().__init__(arms=self.arms, lbda=lbda, te=te, seed=seed)
+        super().__init__(arms=self.arms, lbda=lbda, seed=seed)
 
     def select_default_arm(self):
         """Select the 'default arm'."""
         return self.arms.select_default_arm()
 
-    def act(self, observation, reward):
+    def update_local(self, last_k_or_arm, last_r, t):
+        """Update local variables."""
+        self._update_local(last_k_or_arm, last_r, t)
+
+    def update_shared(self, last_k_or_arm, last_r, t):
+        """Update shared variables."""
+        self._update_shared(last_k_or_arm, last_r, t)
+
+    def act(self, t):
         """Select an arm."""
-
-        self._update_all_statistics(observation, reward)
-
-        kwargs = dict(alpha=self.alpha, inv_A=self.inv_A_local)
+        kwargs = dict(alpha=self.alpha, t=t, inv_A=self.inv_A_local)
 
         selected_k_or_arm = self.arms.select_arm(
-                                self.theta_hat_local,
+                                self.theta_hat,
                                 criterion_kwargs=kwargs,
                                 criterion_grad_kwargs=kwargs)
 
@@ -115,13 +126,13 @@ class QuadUCB(MultiLinearAgentsBase):
         or random-seed used to initialize the random-instance
     """
     def __init__(self, alpha, arms=None, arm_entries=None,
-                 lbda=1.0, te=10, seed=None):
+                 lbda=1.0, seed=None):
         """Init."""
         d = get_d(arms=arms, arm_entries=arm_entries)
 
         # init internal arms class
-        criterion_kwargs = dict(alpha=alpha, inv_A=np.eye(2 * d + 1) / lbda)
-        criterion_grad_kwargs = dict(alpha=alpha, inv_A=np.eye(2 * d + 1) / lbda)  # noqa
+        criterion_kwargs = dict(alpha=alpha, t=0, inv_A=np.eye(2 * d + 1) / lbda)  # noqa
+        criterion_grad_kwargs = dict(alpha=alpha, t=0, inv_A=np.eye(2 * d + 1) / lbda)  # noqa
         self.arms = QuadraticArms(criterion_func=f_neg_ucb,
                                   criterion_kwargs=criterion_kwargs,
                                   criterion_grad=grad_neg_ucb,
@@ -133,49 +144,41 @@ class QuadUCB(MultiLinearAgentsBase):
         self.K = self.arms.K
 
         # init internal variables (inv_A, A, ...)
-        super().__init__(arms=self.arms, lbda=lbda, te=te, seed=seed)
+        super().__init__(arms=self.arms, lbda=lbda, seed=seed)
 
     def select_default_arm(self):
         """Select the 'default arm'."""
         return self.arms.select_default_arm()
 
-    def act(self, observation, reward):
+    def update_local(self, last_k_or_arm, last_r, t):
+        """Update local variables after the quadratic formating."""
+
+        if isinstance(last_k_or_arm, np.ndarray):
+            last_k_or_arm = arm_to_quadratic_arm(last_k_or_arm)
+
+        self._update_local(last_k_or_arm, last_r, t)
+
+    def update_shared(self, last_k_or_arm, last_r, t):
+        """Update shared variables after the quadratic formating."""
+
+        if isinstance(last_k_or_arm, np.ndarray):
+            last_k_or_arm = arm_to_quadratic_arm(last_k_or_arm)
+
+        self._update_shared(last_k_or_arm, last_r, t)
+
+    def act(self, t):
         """Select an arm."""
-
-        if isinstance(observation['last_arm_pulled'], tuple):
-
-            selected_k_or_arms_local, selected_k_or_arms_shared = observation['last_arm_pulled']  # noqa
-
-            if isinstance(selected_k_or_arms_local, np.ndarray):
-                selected_k_or_arms_local = arm_to_quadratic_arm(selected_k_or_arms_local)  # noqa
-
-            if isinstance(selected_k_or_arms_shared[0], np.ndarray):
-                selected_k_or_arms_shared = [arm_to_quadratic_arm(selected_k_or_arm_shared)  # noqa
-                                             for selected_k_or_arm_shared in selected_k_or_arms_shared]  # noqa
-
-            observation['last_arm_pulled'] = (selected_k_or_arms_local, selected_k_or_arms_shared)  # noqa
-
-        else:
-
-            selected_k_or_arms_local = observation['last_arm_pulled']
-
-            if isinstance(selected_k_or_arms_local, np.ndarray):
-                selected_k_or_arms_local = observation['last_arm_pulled']
-
-                observation['last_arm_pulled'] = arm_to_quadratic_arm(selected_k_or_arms_local)  # noqa
-
-        self._update_all_statistics(observation, reward)
-
-        kwargs = dict(alpha=self.alpha, inv_A=self.inv_A_local)
+        kwargs = dict(alpha=self.alpha, t=t, inv_A=self.inv_A_local)
 
         selected_k_or_arm = self.arms.select_arm(
-                                self.theta_hat_local,
+                                self.theta_hat,
                                 criterion_kwargs=kwargs,
                                 criterion_grad_kwargs=kwargs)
 
         return selected_k_or_arm
 
 
+# TODO make it handle the arm_entries case
 class EOptimalDesign(MultiLinearAgentsBase):
     """ E-(trace) optimal design algorithm.
 
@@ -186,11 +189,18 @@ class EOptimalDesign(MultiLinearAgentsBase):
         or random-seed used to initialize the random-instance
     """
 
-    def __init__(self, arms, eps=1e-10, te=10, seed=None):
+    def __init__(self, arms, eps=1e-10, lbda=1.0, seed=None):
         """Init."""
         self.eps = eps
 
-        super().__init__(arms=arms, te=te, seed=seed)
+        # XXX re-use the LinearArms for now
+        self.arms = LinearArms(criterion_func=f_neg_ucb,
+                               criterion_kwargs=dict(),
+                               criterion_grad=grad_neg_ucb,
+                               criterion_grad_kwargs=dict(),
+                               arms=arms, arm_entries=None)
+
+        super().__init__(arms=self.arms, lbda=lbda, seed=seed)
 
         self.p = self._min_f()
 
@@ -198,7 +208,7 @@ class EOptimalDesign(MultiLinearAgentsBase):
         """Objective function."""
         A = np.zeros((self.d, self.d), dtype=float)
         l_xk_xkT = [x_k.reshape((self.d, 1)).dot(x_k.reshape((1, self.d)))
-                    for x_k in self.arms]
+                    for x_k in self.arms._arms]
         for p_i, xk_xkT_i in zip(p, l_xk_xkT):
             A += p_i * xk_xkT_i
         return np.linalg.norm(np.linalg.pinv(A))
@@ -211,7 +221,7 @@ class EOptimalDesign(MultiLinearAgentsBase):
 
     def _min_f(self):
         """A-optimal design planning function."""
-        mu_0 = np.array([1.0 / len(self.arms)] * len(self.arms))
+        mu_0 = np.array([1.0 / len(self.arms._arms)] * len(self.arms._arms))
         constraints = [{'type': 'ineq', 'fun': self._g_1},
                        {'type': 'eq', 'fun': self._g_2}]
         p = optimize.minimize(self._f, x0=mu_0, constraints=constraints).x
@@ -219,13 +229,24 @@ class EOptimalDesign(MultiLinearAgentsBase):
         p[p < 0.0] = 0.0
         return p
 
-    def act(self, observation, reward):
+    def update_local(self, last_k_or_arm, last_r, t):
+        """Update local variables."""
+        self._update_local(last_k_or_arm, last_r, t)
+
+    def update_shared(self, last_k_or_arm, last_r, t):
+        """Update shared variables."""
+        self._update_shared(last_k_or_arm, last_r, t)
+
+    def select_default_arm(self):
+        """Select the 'default arm'."""
+        return self.arms.select_default_arm()
+
+    def act(self, t):
         """Select an arm."""
-        self._update_all_statistics(observation, reward)
-
-        return self.rng.choice(np.arange(self.K), p=self.p)
+        return self.rng.choice(np.arange(self.arms.K), p=self.p)
 
 
+# TODO make it handle the arm_entries case
 class GreedyLinGapE(MultiLinearAgentsBase):
     """ Linear Gap-based Exploration class to define the LinGapE algorithm.
 
@@ -237,7 +258,7 @@ class GreedyLinGapE(MultiLinearAgentsBase):
         or random-seed used to initialize the random-instance
     """
 
-    def __init__(self, arms, epsilon, delta, R, S, lbda, te=10, seed=None):
+    def __init__(self, arms, epsilon, delta, R, S, lbda, seed=None):
         """Init."""
 
         if not (epsilon >= 0.0):
@@ -264,56 +285,56 @@ class GreedyLinGapE(MultiLinearAgentsBase):
         self.S = S
         self.lbda = lbda
 
-        super().__init__(arms=arms, te=te, seed=seed)
+        super().__init__(arms=arms, seed=seed)
 
-    def act(self, observation, reward):
+    def update_local(self, last_k_or_arm, last_r, t):
+        """Update local variables."""
+        self._update_local(last_k_or_arm, last_r, t)
+
+    def update_shared(self, last_k_or_arm, last_r, t):
+        """Update shared variables."""
+        self._update_shared(last_k_or_arm, last_r, t)
+
+    def act(self, t):
         """Select an arm."""
+        # update main statistic variables
+        C = np.sqrt(np.linalg.det(self.A))
+        C /= (self.delta * self.lbda ** (self.d/2.0))
+        C = np.sqrt(2 * np.log(C))
+        C = float(C * self.R + np.sqrt(self.lbda) * self.S)
 
-        self._update_all_statistics(observation, reward)
+        # best arm
+        ii = []
+        for x_k in self.arms:
+            x_k = x_k.reshape((self.d, 1))
+            r_k = x_k.T.dot(self.theta_hat)
+            ii.append(float(r_k))
+        i = np.argmax(ii)
+        x_i = self.arms[i].reshape((self.d, 1))
 
-        if observation['t'] < self.K:
-            # arm selection
-            k = observation['t'] % self.K
+        # best and most uncertain arm
+        jj = []
+        for x_k in self.arms:
+            x_k = x_k.reshape((self.d, 1))
+            jj.append(_f_ucb(x_k - x_i, C, self.theta_hat,
+                      self.inv_A_local))
+        j = np.argmax(jj)
+        x_j = self.arms[j].reshape((self.d, 1))
+        B = np.max(jj)
 
-        else:
-            # update main statistic variables
-            C = np.sqrt(np.linalg.det(self.A))
-            C /= (self.delta * self.lbda ** (self.d/2.0))
-            C = np.sqrt(2 * np.log(C))
-            C = float(C * self.R + np.sqrt(self.lbda) * self.S)
+        # early-stopping
+        if B <= self.epsilon:
+            self.done = True  # best arm identified
+            self.best_arm_hat = i
 
-            # best arm
-            ii = []
-            for x_k in self.arms:
-                x_k = x_k.reshape((self.d, 1))
-                r_k = x_k.T.dot(self.theta_hat)
-                ii.append(float(r_k))
-            i = np.argmax(ii)
-            x_i = self.arms[i].reshape((self.d, 1))
-
-            # best and most uncertain arm
-            jj = []
-            for x_k in self.arms:
-                x_k = x_k.reshape((self.d, 1))
-                jj.append(_f_ucb(x_k - x_i, C, self.theta_hat_local,
-                                 self.inv_A_local))
-            j = np.argmax(jj)
-            x_j = self.arms[j].reshape((self.d, 1))
-            B = np.max(jj)
-
-            # early-stopping
-            if B <= self.epsilon:
-                self.done = True  # best arm identified
-                self.best_arm_hat = i
-
-            # greedy arm selection
-            aa = []
-            for x_k in self.arms:
-                x_k = x_k.reshape((self.d, 1))
-                inv_A_x_k = _fast_inv_sherman_morrison(self.inv_A_local, x_k)
-                gap_ij = x_i - x_j
-                a = np.sqrt(gap_ij.T.dot(inv_A_x_k).dot(gap_ij))
-                aa.append(float(a))
-            k = np.argmax(aa)
+        # greedy arm selection
+        aa = []
+        for x_k in self.arms:
+            x_k = x_k.reshape((self.d, 1))
+            inv_A_x_k = _fast_inv_sherman_morrison(self.inv_A_local, x_k)
+            gap_ij = x_i - x_j
+            a = np.sqrt(gap_ij.T.dot(inv_A_x_k).dot(gap_ij))
+            aa.append(float(a))
+        k = np.argmax(aa)
 
         return k

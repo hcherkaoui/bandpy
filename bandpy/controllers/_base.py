@@ -30,6 +30,10 @@ class ControllerBase:
         for agent_name in self.agent_names:
             self.agents[agent_name] = agent_cls(**agent_kwargs)
 
+    def choose_agent(self):
+        """Randomly return the name of an agent."""
+        return f"agent_{self.rng.randint(self.N)}"
+
     @property
     def best_arms(self):
         """Return for each agent the estimated best arm.
@@ -48,7 +52,6 @@ class ControllerBase:
         Parameters
         ----------
         """
-        actions = dict()
-        for agent_name, agent in self.agents.items():
-            actions[agent_name] = self.agents[agent_name].select_default_arm()
-        return actions
+        agent_name = self.choose_agent()
+        agent = self.agents[agent_name]
+        return {agent_name: agent.select_default_arm()}

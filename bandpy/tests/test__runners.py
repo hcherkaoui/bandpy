@@ -1,9 +1,10 @@
 """Testing module for the runners functions. """
+
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import pytest
 
-from bandpy import run_trials, env, controllers, agents
+from bandpy import runners, env, controllers, agents
 from bandpy.utils import tests_set_up
 
 
@@ -25,13 +26,13 @@ def test_run_trials(d, early_stopping, seed):
     agent_cls = agents.LinUniform
     agent_kwargs = dict(arms=bandit.arms, seed=seed)
 
-    ctrl = controllers.DecentralizedController(agent_cls, agent_kwargs, N=N)
+    ctrl = controllers.Decentralized(agent_cls, agent_kwargs, N=N)
 
-    trial_results = run_trials(env=bandit,
-                               agent_or_controller=ctrl,
-                               early_stopping=early_stopping,
-                               seeds=seeds,
-                               n_jobs=1,
-                               verbose=False)
+    trial_results = runners.run_trials(env=bandit,
+                                       agent_or_controller=ctrl,
+                                       early_stopping=early_stopping,
+                                       seeds=seeds,
+                                       n_jobs=1,
+                                       verbose=False)
 
     assert len(seeds) == len(trial_results)

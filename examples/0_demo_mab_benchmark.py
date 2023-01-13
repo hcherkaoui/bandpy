@@ -1,7 +1,7 @@
 """ Simple example with UCB policy.
 
 Launch it with ::
-    $ python 0_demo_benchmark.py --n-trials 5 --N 10 --T 100 --seed 0 --n-jobs 5 --verbose  # noqa
+    $ python 0_demo_benchmark.py --n-jobs 5 --verbose
 
 """
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.fr>
@@ -10,7 +10,7 @@ import time
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
-from bandpy import run_trials, env, controllers, agents, utils
+from bandpy import runners, env, controllers, agents, utils
 
 
 plt.style.use('tableau-colorblind10')
@@ -43,7 +43,7 @@ if __name__ == '__main__':
                         help='Number of trials.')
     parser.add_argument('--N', type=int, default=100,
                         help='Number of agents.')
-    parser.add_argument('--T', type=int, default=1000,
+    parser.add_argument('--T', type=int, default=50000,
                         help='Number of iterations for the simulation.')
     parser.add_argument('--seed', type=int, default=None,
                         help='Set the seed for the experiment. Can be used '
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     ###########################################################################
     # Setting the simulation
     if args.verbose:
-        print("[Main] Setting simulation.")
+        print("[Main] Setting simulation")
 
     mu = [1.0, 0.5, 2.5]
     sigma = [1.0, 2.0, 0.1]
@@ -109,7 +109,7 @@ if __name__ == '__main__':
         agent_cls = agent_kits['agent_cls']
         agent_kwargs = agent_kits['agent_kwargs']
 
-        bandit_controller = controllers.DecentralizedController(
+        bandit_controller = controllers.Decentralized(
                                                 N=args.N, agent_cls=agent_cls,
                                                 agent_kwargs=agent_kwargs)
 
@@ -117,42 +117,41 @@ if __name__ == '__main__':
         seeds = rng.randint(MAX_RANDINT, size=args.n_trials)
 
         if args.verbose:
-            print(f"[Main] Running simulation with agent '{agent_name}'.")
+            print(f"[Main] Running simulation with agent '{agent_name}'")
 
-        trial_results[agent_name] = run_trials(
+        trial_results[agent_name] = runners.run_trials(
                                     bandit_env, bandit_controller,
                                     early_stopping=False, seeds=seeds,
-                                    n_jobs=args.n_jobs, verbose=args.verbose)
+                                    n_jobs=args.n_jobs, verbose=args.verbose,
+                                    )
 
     ###########################################################################
     # Gathering results
     if args.verbose:
-        print("[Main] Gathering results.")
+        print("[Main] Gathering results")
 
-    cumulative_regrets = dict()
+    no_noise_R_t = dict()
     for agent_name, trial_results_per_agent in trial_results.items():
 
-        l_cumulative_regrets, l_instantaneous_regrets = [], []
+        l_no_noise_R_t = []
         for one_trial_result in trial_results_per_agent:
 
-            _, env = one_trial_result
+            _, bandit_env = one_trial_result
 
-            l_cumulative_regrets.append(np.cumsum(env.mean_instantaneous_regret()))  # noqa
+            l_no_noise_R_t.append(bandit_env.no_noise_R_t)  # noqa
 
-        cumulative_regrets[agent_name] = l_cumulative_regrets
+        no_noise_R_t[agent_name] = l_no_noise_R_t
 
     ###########################################################################
     # Plotting
-    plt.figure(figsize=(6, 2))
+    plt.figure(figsize=(6, 3))
 
-    for agent_name in cumulative_regrets.keys():
+    for agent_name in no_noise_R_t.keys():
 
-        l_cumulative_regrets = cumulative_regrets[agent_name]
-
-        mean_, std_, _, _, all_lengths = utils.tolerant_stats(l_cumulative_regrets)  # noqa
+        mean_, std_, _, _, all_lengths = utils.tolerant_stats(no_noise_R_t[agent_name])  # noqa
         tt = np.arange(np.max(all_lengths))
 
-        plt.plot(tt, mean_, color=agent_colors[agent_name], lw=3.0,
+        plt.plot(tt, mean_, color=agent_colors[agent_name], lw=1.0,
                  linestyle=agent_linestyles[agent_name], label=agent_name)
         plt.fill_between(tt, mean_ + std_, mean_ - std_,
                          color=agent_colors[agent_name], alpha=0.3)
@@ -167,7 +166,7 @@ if __name__ == '__main__':
     plt.tight_layout()
 
     if args.verbose:
-        print(f"[Main] Saving plot under '{args.fig_fname}'.")
+        print(f"[Main] Saving plot under '{args.fig_fname}'")
 
     plt.savefig(args.fig_fname, dpi=300)
 
@@ -176,4 +175,4 @@ if __name__ == '__main__':
 delta_t = time.gmtime(time.time() - t0_total)
 delta_t = time.strftime("%H h %M min %S s", delta_t)
 if args.verbose:
-    print(f"[Main] Script runs in {delta_t}.")
+    print(f"[Main] Script runs in {delta_t}")

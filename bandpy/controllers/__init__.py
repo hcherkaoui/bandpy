@@ -2,19 +2,17 @@
 
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
-from ._controllers import (DecentralizedController, SingleClusterController,
-                           OracleClusteringController, KPartiteGraphController,
-                           LBC, LBCSP, LBCCP, CLUB, DynUCB, LOCB)
+from ._controllers import (Decentralized, SingleCluster, OracleClustering,
+                           LBC,
+                           LBCTwoPhases,
+                           CLUB, DynUCB)
 
 
-__all__ = ['DecentralizedController',
-           'SingleClusterController',
-           'OracleClusteringController',
-           'KPartiteGraphController',
+__all__ = ['Decentralized',
+           'SingleCluster',
+           'OracleClustering',
            'LBC',
-           'LBCSP',
-           'LBCCP',
+           'LBCTwoPhases',
            'CLUB',
            'DynUCB',
-           'LOCB',
            ]

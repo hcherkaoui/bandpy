@@ -19,17 +19,14 @@ def test_LinUniform(d, K, seed):
     seed = set_up['seed']
     rng = set_up['rng']
     lbda = set_up['lbda']
-    te = set_up['te']
 
     arms = [rng.randn(d) for _ in range(K)]
 
-    agent_ = agents.LinUniform(arms=arms, arm_entries=None, lbda=lbda, te=te,
+    agent_ = agents.LinUniform(arms=arms, arm_entries=None, lbda=lbda,
                                seed=seed)
 
     assert DEFAULT_ARM_IDX == agent_.select_default_arm()
 
-    observation = {'last_arm_pulled': 0, 't': 10}
-    reward = 0.1
-    k = agent_.act(observation, reward)
+    k = agent_.act(0)
 
     assert k in np.arange(K)
