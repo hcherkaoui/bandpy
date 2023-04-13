@@ -6,6 +6,17 @@ import re
 import numpy as np
 
 
+def check_A_init(d, lbda, A_init):
+    """Check the initialization of the design matrix"""
+    if A_init is None:
+        A_init = lbda * np.eye(d)
+
+    msg = "The initialization matrix A_init is not symetrical."
+    assert np.allclose(A_init, A_init.T), msg
+
+    return A_init
+
+
 def check_N_and_agent_names(N, agent_names):
     """ Check N and 'agent_names'."""
 

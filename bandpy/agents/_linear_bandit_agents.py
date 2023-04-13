@@ -8,7 +8,7 @@ from scipy import optimize
 from ._base import MultiLinearAgentsBase
 from .._criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
 from .._arms import LinearArms, QuadraticArms, arm_to_quadratic_arm
-from .._compils import _fast_inv_sherman_morrison
+from .._compils import sherman_morrison
 from ..utils import get_d
 
 
@@ -40,13 +40,13 @@ class LinUniform(MultiLinearAgentsBase):
         """Select the 'default arm'."""
         return self.arms.select_default_arm()
 
-    def update_local(self, last_k_or_arm, last_r, t):
+    def update_local(self, last_k_or_arm, last_r):
         """Update local variables."""
-        self._update_local(last_k_or_arm, last_r, t)
+        self._update_local(last_k_or_arm, last_r)
 
-    def update_shared(self, last_k_or_arm, last_r, t):
+    def update_shared(self, last_k_or_arm, last_r):
         """Update shared variables."""
-        self._update_shared(last_k_or_arm, last_r, t)
+        self._update_shared(last_k_or_arm, last_r)
 
     def act(self, t):
         """Select an arm."""
@@ -95,20 +95,20 @@ class LinUCB(MultiLinearAgentsBase):
         """Select the 'default arm'."""
         return self.arms.select_default_arm()
 
-    def update_local(self, last_k_or_arm, last_r, t):
+    def update_local(self, last_k_or_arm, last_r):
         """Update local variables."""
-        self._update_local(last_k_or_arm, last_r, t)
+        self._update_local(last_k_or_arm, last_r)
 
-    def update_shared(self, last_k_or_arm, last_r, t):
+    def update_shared(self, last_k_or_arm, last_r):
         """Update shared variables."""
-        self._update_shared(last_k_or_arm, last_r, t)
+        self._update_shared(last_k_or_arm, last_r)
 
     def act(self, t):
         """Select an arm."""
-        kwargs = dict(alpha=self.alpha, t=t, inv_A=self.inv_A_local)
+        kwargs = dict(alpha=self.alpha, t=t, inv_A=self.inv_A)  # shared inv_A
 
         selected_k_or_arm = self.arms.select_arm(
-                                self.theta_hat,
+                                self.theta_hat,  # shared theta
                                 criterion_kwargs=kwargs,
                                 criterion_grad_kwargs=kwargs)
 
@@ -150,28 +150,28 @@ class QuadUCB(MultiLinearAgentsBase):
         """Select the 'default arm'."""
         return self.arms.select_default_arm()
 
-    def update_local(self, last_k_or_arm, last_r, t):
+    def update_local(self, last_k_or_arm, last_r):
         """Update local variables after the quadratic formating."""
 
         if isinstance(last_k_or_arm, np.ndarray):
             last_k_or_arm = arm_to_quadratic_arm(last_k_or_arm)
 
-        self._update_local(last_k_or_arm, last_r, t)
+        self._update_local(last_k_or_arm, last_r)
 
-    def update_shared(self, last_k_or_arm, last_r, t):
+    def update_shared(self, last_k_or_arm, last_r):
         """Update shared variables after the quadratic formating."""
 
         if isinstance(last_k_or_arm, np.ndarray):
             last_k_or_arm = arm_to_quadratic_arm(last_k_or_arm)
 
-        self._update_shared(last_k_or_arm, last_r, t)
+        self._update_shared(last_k_or_arm, last_r)
 
     def act(self, t):
         """Select an arm."""
-        kwargs = dict(alpha=self.alpha, t=t, inv_A=self.inv_A_local)
+        kwargs = dict(alpha=self.alpha, t=t, inv_A=self.inv_A)  # shared inv_A
 
         selected_k_or_arm = self.arms.select_arm(
-                                self.theta_hat,
+                                self.theta_hat,  # shared theta
                                 criterion_kwargs=kwargs,
                                 criterion_grad_kwargs=kwargs)
 
@@ -229,13 +229,13 @@ class EOptimalDesign(MultiLinearAgentsBase):
         p[p < 0.0] = 0.0
         return p
 
-    def update_local(self, last_k_or_arm, last_r, t):
+    def update_local(self, last_k_or_arm, last_r):
         """Update local variables."""
-        self._update_local(last_k_or_arm, last_r, t)
+        self._update_local(last_k_or_arm, last_r)
 
-    def update_shared(self, last_k_or_arm, last_r, t):
+    def update_shared(self, last_k_or_arm, last_r):
         """Update shared variables."""
-        self._update_shared(last_k_or_arm, last_r, t)
+        self._update_shared(last_k_or_arm, last_r)
 
     def select_default_arm(self):
         """Select the 'default arm'."""
@@ -287,13 +287,13 @@ class GreedyLinGapE(MultiLinearAgentsBase):
 
         super().__init__(arms=arms, seed=seed)
 
-    def update_local(self, last_k_or_arm, last_r, t):
+    def update_local(self, last_k_or_arm, last_r):
         """Update local variables."""
-        self._update_local(last_k_or_arm, last_r, t)
+        self._update_local(last_k_or_arm, last_r)
 
-    def update_shared(self, last_k_or_arm, last_r, t):
+    def update_shared(self, last_k_or_arm, last_r):
         """Update shared variables."""
-        self._update_shared(last_k_or_arm, last_r, t)
+        self._update_shared(last_k_or_arm, last_r)
 
     def act(self, t):
         """Select an arm."""
@@ -331,7 +331,7 @@ class GreedyLinGapE(MultiLinearAgentsBase):
         aa = []
         for x_k in self.arms:
             x_k = x_k.reshape((self.d, 1))
-            inv_A_x_k = _fast_inv_sherman_morrison(self.inv_A_local, x_k)
+            inv_A_x_k = sherman_morrison(self.inv_A_local, x_k)
             gap_ij = x_i - x_j
             a = np.sqrt(gap_ij.T.dot(inv_A_x_k).dot(gap_ij))
             aa.append(float(a))

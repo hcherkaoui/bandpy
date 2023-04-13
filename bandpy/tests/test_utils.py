@@ -8,7 +8,7 @@ import numpy as np
 from bandpy.utils import (convert_grid_to_list, _generate_list_of_nd_array,
                           generate_gaussian_arm_entries, arms_to_arm_entries,
                           arm_entries_to_arms, proj_on_arm_entries,
-                          tests_set_up)
+                          pytest_set_up)
 
 
 def test_arms_and_arm_entries_converter():
@@ -72,7 +72,7 @@ def test_generate_gaussian_arm_entries(d, seed):
 @pytest.mark.parametrize('seed', [0, 1])
 def test_proj_on_arm_entries(d, seed):
     """Test 'proj_on_arm_entries'."""
-    set_up = tests_set_up(d=d, seed=seed)
+    set_up = pytest_set_up(d=d, seed=seed)
 
     x_k = set_up['x_k']
 

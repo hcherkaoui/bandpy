@@ -2,6 +2,7 @@
 
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
+import numpy as np
 from ..utils import check_random_state
 
 
@@ -19,6 +20,8 @@ class ControllerBase:
 
         self.N = N
 
+        self.T_i = np.zeros((N,), dtype=int)
+
         self.seed = seed
         self.rng = check_random_state(seed)
 
@@ -30,9 +33,13 @@ class ControllerBase:
         for agent_name in self.agent_names:
             self.agents[agent_name] = agent_cls(**agent_kwargs)
 
+        self.done = False
+
     def choose_agent(self):
         """Randomly return the name of an agent."""
-        return f"agent_{self.rng.randint(self.N)}"
+        i = self.rng.randint(self.N)
+        self.T_i[i] += 1
+        return f"agent_{i}"
 
     @property
     def best_arms(self):

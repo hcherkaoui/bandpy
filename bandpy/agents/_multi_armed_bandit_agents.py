@@ -35,7 +35,7 @@ class FollowTheLeader(SingleMABAgentBase):
                                 for k in range(self.K)]
         return np.argmax(mean_reward_per_arms)
 
-    def update_local(self, last_k, last_r, t):
+    def update_local(self, last_k, last_r):
         """Update local variables.
 
         Parameters
@@ -43,7 +43,7 @@ class FollowTheLeader(SingleMABAgentBase):
         """
         self.reward_per_arms[last_k].append(last_r)
 
-    def update_shared(self, last_k, last_r, t):
+    def update_shared(self, last_k, last_r):
         """Update local variables.
 
         Parameters
@@ -84,7 +84,7 @@ class Uniform(SingleMABAgentBase):
         """
         return None
 
-    def update_local(self, last_k, last_r, t):
+    def update_local(self, last_k, last_r):
         """Update local variables.
 
         Parameters
@@ -92,7 +92,7 @@ class Uniform(SingleMABAgentBase):
         """
         pass
 
-    def update_shared(self, last_k, last_r, t):
+    def update_shared(self, last_k, last_r):
         """Update local variables.
 
         Parameters
@@ -139,7 +139,7 @@ class EC(SingleMABAgentBase):
         """
         return self.estimated_best_arm
 
-    def update_local(self, last_k, last_r, t):
+    def update_local(self, last_k, last_r):
         """Update local variables.
 
         Parameters
@@ -147,7 +147,7 @@ class EC(SingleMABAgentBase):
         """
         self.reward_per_arms[last_k].append(last_r)
 
-    def update_shared(self, last_k, last_r, t):
+    def update_shared(self, last_k, last_r):
         """Update local variables.
 
         Parameters
@@ -217,7 +217,7 @@ class UCB(SingleMABAgentBase):
                                 for k in range(self.K)]
         return np.argmax(mean_reward_per_arms)
 
-    def update_local(self, last_k, last_r, t):
+    def update_local(self, last_k, last_r):
         """Update local variables.
 
         Parameters
@@ -226,7 +226,7 @@ class UCB(SingleMABAgentBase):
         self.n_pulls_per_arms[last_k] += 1
         self.reward_per_arms[last_k].append(last_r)
 
-    def update_shared(self, last_k, last_r, t):
+    def update_shared(self, last_k, last_r):
         """Update local variables.
 
         Parameters

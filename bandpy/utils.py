@@ -183,7 +183,7 @@ def generate_gaussian_arm_entries(n_vals_per_dim, d, seed=None):
     return arm_entries
 
 
-def tests_set_up(d=2, seed=None):
+def pytest_set_up(d=2, seed=None):
     """Synthetic set-up for the unittests."""
     rng = check_random_state(seed)
     set_up = dict()

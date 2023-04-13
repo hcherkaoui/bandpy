@@ -5,7 +5,7 @@
 import pytest
 
 from bandpy import runners, env, controllers, agents
-from bandpy.utils import tests_set_up
+from bandpy.utils import pytest_set_up
 
 
 @pytest.mark.parametrize('d', [2, 10])
@@ -13,7 +13,7 @@ from bandpy.utils import tests_set_up
 @pytest.mark.parametrize('early_stopping', [False, True])
 def test_run_trials(d, early_stopping, seed):
     """Test the runner of 'run_trials'."""
-    set_up = tests_set_up(d=d, seed=seed)
+    set_up = pytest_set_up(d=d, seed=seed)
 
     seed = set_up['seed']
     seeds = [seed] * 3

@@ -6,7 +6,7 @@ import numpy as np
 
 from bandpy import agents
 from bandpy._arms import DEFAULT_ARM_IDX
-from bandpy.utils import tests_set_up
+from bandpy.utils import pytest_set_up
 
 
 @pytest.mark.parametrize('K', [2, 5, 10])
@@ -14,7 +14,7 @@ from bandpy.utils import tests_set_up
 @pytest.mark.parametrize('seed', [0, 1])
 def test_LinUniform(d, K, seed):
     """Test the LinUniform agent."""
-    set_up = tests_set_up(d=d, seed=seed)
+    set_up = pytest_set_up(d=d, seed=seed)
 
     seed = set_up['seed']
     rng = set_up['rng']

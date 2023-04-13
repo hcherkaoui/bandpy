@@ -6,7 +6,7 @@ import numpy as np
 
 from bandpy._arms import LinearArms
 from bandpy._criterions import f_neg_ucb, grad_neg_ucb
-from bandpy.utils import (tests_set_up, generate_gaussian_arm_entries,
+from bandpy.utils import (pytest_set_up, generate_gaussian_arm_entries,
                           arm_entries_to_arms)
 
 
@@ -15,7 +15,7 @@ from bandpy.utils import (tests_set_up, generate_gaussian_arm_entries,
 def test_LinearArms(d, seed):
     """ Test the check random state. """
     # set set-up
-    set_up = tests_set_up(d=d, seed=seed)
+    set_up = pytest_set_up(d=d, seed=seed)
 
     theta = set_up['theta']
     inv_A = set_up['inv_A']
