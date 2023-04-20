@@ -9,6 +9,7 @@ from ._base import ControllerBase
 from ..agents._linear_bandit_agents import MultiLinearAgentsBase
 from .._compils import K_min
 from .._checks import check_random_state, check_N_and_agent_names, check_A_init
+from .._criterions import _f_ucb
 
 
 class SingleAgentController:
@@ -52,16 +53,6 @@ class ClusteringController(ControllerBase):
     """ClusteringController class to define a simple clustered
     multi-agents.
     """
-    def get_A_and_theta(self, cluster_idx):
-        """Update A and b for cluster 'cluster_idx'."""
-        A = np.copy(self.A_init)
-        b = np.zeros((self.d, 1))
-        for i in self.comps[cluster_idx]:
-            A += self.agents[f"agent_{i}"].A_local - self.A_init
-            b += self.agents[f"agent_{i}"].b_local
-        inv_A = np.linalg.inv(A)
-        return inv_A, inv_A.dot(b)
-
     def archive_labels(self):
         """Archive the current agent labels within self.l_labels."""
         self.l_labels.append([self.agent_labels[agent_name]
@@ -79,6 +70,10 @@ class ClusteringController(ControllerBase):
         assert len(observation) == 1, msg
         assert len(reward) == 1, msg
         return observation, reward
+
+    def cluster_agents(self, t):
+        """Cluster all the agents from their estimated theta."""
+        raise NotImplementedError
 
     def act(self, observation, reward):
         """Make each agent choose an arm in a clustered way."""
@@ -118,11 +113,9 @@ class SingleCluster(ClusteringController):
                  seed=None):
         """Init."""
         N, agent_names = check_N_and_agent_names(N, agent_names)
-
         self.agent_labels = dict(zip([f"agent_{i}" for i in range(N)],
                                      [0] * N))
-
-        self.l_labels = [[0] * N]
+        self.l_labels = [list(np.zeros(N))]
 
         super().__init__(N=N, agent_cls=agent_cls, agent_kwargs=agent_kwargs,
                          agent_names=agent_names, seed=seed)
@@ -140,11 +133,9 @@ class Decentralized(ClusteringController):
                  seed=None):
         """Init."""
         N, agent_names = check_N_and_agent_names(N, agent_names)
-
         self.agent_labels = dict(zip([f"agent_{i}" for i in range(N)],
                                      list(range(N))))
-
-        self.l_labels = [list(range(N))]
+        self.l_labels = [list(np.arange(N))]
 
         super().__init__(N=N, agent_cls=agent_cls, agent_kwargs=agent_kwargs,
                          agent_names=agent_names, seed=seed)
@@ -162,9 +153,7 @@ class OracleClustering(ClusteringController):
                  N=None, agent_names=None, seed=None):
         """Init."""
         N, agent_names = check_N_and_agent_names(N, agent_names)
-
         self.agent_labels = agent_labels
-
         self.l_labels = [[self.agent_labels[agent_name]
                           for agent_name in agent_names]]
 
@@ -184,11 +173,29 @@ class AbstractCLUB(ClusteringController):
         """Return the best arm to pull following the UCB criterion."""
         uu = []
         for x_k in self.arms:
-            u = self.alpha * np.sqrt(x_k.T.dot(inv_A).dot(x_k))
-            u *= np.sqrt(np.log(t + 1))
-            u += theta.T.dot(x_k)
-            uu.append(float(u))
+            uu.append(_f_ucb(self.alpha, t, x_k.ravel(), theta.ravel(), inv_A))
         return np.argmax(uu)
+
+    def get_cluster_shared_parameters(self, cluster_idx):
+        """Get the parameters of 'cluster_idx'."""
+        A = np.copy(self.A_init)
+        b = np.zeros((self.d, 1))
+        for i in self.comps[cluster_idx]:
+            A += self.agents[f"agent_{i}"].A_local - self.A_init
+            b += self.agents[f"agent_{i}"].b_local
+        inv_A = np.linalg.inv(A)
+        theta = inv_A.dot(b)
+        return A, b, inv_A, theta
+
+    def update_shared_parameters(self, cluster_idx, A, b, inv_A, theta):
+        """Update parameter for cluster 'cluster_idx'."""
+        for i in self.comps[cluster_idx]:
+            self.agents[f"agent_{i}"].A = np.copy(A)
+            self.agents[f"agent_{i}"].b = np.copy(b)
+            self.agents[f"agent_{i}"].inv_A = np.copy(inv_A)
+            self.agents[f"agent_{i}"].chol_A = None
+            self.agents[f"agent_{i}"].det_A = None
+            self.agents[f"agent_{i}"].theta_hat = np.copy(theta)
 
     def act(self, observation, reward):
         """Make each agent choose an arm in a clustered way."""
@@ -210,8 +217,9 @@ class AbstractCLUB(ClusteringController):
         agent_name = self.choose_agent()
 
         cluster_idx = self.agent_labels[agent_name]
-        inv_A_cluster, theta_cluster = self.get_A_and_theta(cluster_idx)
-        k = self.pull_arm_ucb(t, inv_A_cluster, theta_cluster)
+        A, b, inv_A, theta = self.get_cluster_shared_parameters(cluster_idx)
+        self.update_shared_parameters(cluster_idx, A, b, inv_A, theta)
+        k = self.pull_arm_ucb(t, inv_A, theta)
 
         self.check_if_controller_done()
 
@@ -255,10 +263,10 @@ class CLUB(AbstractCLUB):
 
         # graph related parameters
         self.graph_G = nx.from_numpy_array(np.ones((self.N, self.N)))
-        self.agent_labels = dict(zip([f"agent_{i}" for i in range(self.N)],
-                                     [0] * self.N))
+        self.agent_labels = dict(zip([f"agent_{i}" for i in range(N)],
+                                     [0] * N))
         self.comps = [set(range(N))]
-        self.l_labels = [[0] * self.N]
+        self.l_labels = [list(np.zeros(N))]
 
     def update_clusters(self, i):
         """Update raw/col i-th of the similarity graph G."""
@@ -330,10 +338,10 @@ class LBC(AbstractCLUB):
 
         # graph related parameters
         self.graph_G = nx.from_numpy_array(np.ones((self.N, self.N)))
-        self.agent_labels = dict(zip([f"agent_{i}" for i in range(self.N)],
-                                     [0] * self.N))
+        self.agent_labels = dict(zip([f"agent_{i}" for i in range(N)],
+                                     [0] * N))
         self.comps = [set(range(N))]
-        self.l_labels = [[0] * self.N]
+        self.l_labels = [list(np.zeros(N))]
 
     def update_clusters(self, i):
         """Update raw/col i-th of the similarity graph G."""
@@ -390,6 +398,8 @@ class DynUCB():
 
         # init agents
         self.N = N
+        self.T_i = np.zeros((N,), dtype=int)
+        self.t = -1  # to be synchonous with the env clock
         self.agents = dict()
         for n in range(self.N):
             self.agents[f"agent_{n}"] = MultiLinearAgentsBase(**agent_kwargs)
@@ -403,7 +413,7 @@ class DynUCB():
         self.cluster_thetas = dict()
         self.cluster_inv_A = dict()
         for cluster_idx in range(self.n_clusters):
-            inv_A, theta = self.get_A_and_theta(cluster_idx)
+            _, _, inv_A, theta = self.get_cluster_shared_parameters(cluster_idx)  # noqa
             self.cluster_inv_A[cluster_idx] = inv_A
             self.cluster_thetas[cluster_idx] = theta
 
@@ -424,15 +434,26 @@ class DynUCB():
             comps[m] = labels
         return agent_labels, comps
 
-    def get_A_and_theta(self, cluster_idx):
-        """Update A and b for cluster 'cluster_idx'."""
+    def get_cluster_shared_parameters(self, cluster_idx):
+        """Get the parameters of 'cluster_idx'."""
         A = np.copy(self.A_init)
         b = np.zeros((self.d, 1))
         for i in self.comps[cluster_idx]:
             A += self.agents[f"agent_{i}"].A_local - self.A_init
             b += self.agents[f"agent_{i}"].b_local
         inv_A = np.linalg.inv(A)
-        return inv_A, inv_A.dot(b)
+        theta = inv_A.dot(b)
+        return A, b, inv_A, theta
+
+    def update_shared_parameters(self, cluster_idx, A, b, inv_A, theta):
+        """Update parameter for cluster 'cluster_idx'."""
+        for i in self.comps[cluster_idx]:
+            self.agents[f"agent_{i}"].A = np.copy(A)
+            self.agents[f"agent_{i}"].b = np.copy(b)
+            self.agents[f"agent_{i}"].inv_A = np.copy(inv_A)
+            self.agents[f"agent_{i}"].chol_A = None
+            self.agents[f"agent_{i}"].det_A = None
+            self.agents[f"agent_{i}"].theta_hat = np.copy(theta)
 
     @property
     def best_arms(self):
@@ -443,24 +464,24 @@ class DynUCB():
         return best_arms
 
     def default_act(self):
-        """ Make each agent pulls 'default' arm to init the simulation."""
-        actions = dict()
-        for agent_name, agent in self.agents.items():
-            actions[agent_name] = self.agents[agent_name].select_default_arm()
-        return actions
+        """ Choose one agent and makes it pull the 'default' arm to init the
+        simulation. """
+        agent_name = self.choose_agent()
+        agent = self.agents[agent_name]
+        return {agent_name: agent.select_default_arm()}
 
     def choose_agent(self):
         """Randomly return the name of an agent."""
-        return f"agent_{self.rng.randint(self.N)}"
+        i = self.rng.randint(self.N)
+        self.t += 1  # asynchrone case
+        self.T_i[i] += 1
+        return f"agent_{i}"
 
     def pull_arm_ucb(self, t, inv_A, theta):
         """Return the best arm to pull following the UCB criterion."""
         uu = []
         for x_k in self.arms:
-            u = self.alpha * np.sqrt(x_k.T.dot(inv_A).dot(x_k))
-            u *= np.sqrt(np.log(t + 1))
-            u += theta.T.dot(x_k)
-            uu.append(float(u))
+            uu.append(_f_ucb(self.alpha, t, x_k.ravel(), theta.ravel(), inv_A))
         return np.argmax(uu)
 
     def archive_labels(self):
@@ -514,13 +535,16 @@ class DynUCB():
 
             # update old agent cluster
             self.comps[old_agent_label].remove(agent_idx)
-            inv_A_cluster, theta_cluster = self.get_A_and_theta(old_agent_label)  # noqa
+            A_cluster, b_cluster, inv_A_cluster, theta_cluster = self.get_cluster_shared_parameters(old_agent_label)  # noqa
+            self.update_shared_parameters(old_agent_label, A_cluster, b_cluster, inv_A_cluster, theta_cluster)  # noqa
             self.cluster_thetas[old_agent_label] = theta_cluster
             self.cluster_inv_A[old_agent_label] = inv_A_cluster
 
             # update new agent cluster
             self.comps[agent_label].append(agent_idx)
-            inv_A_cluster, theta_cluster = self.get_A_and_theta(agent_label)
+            A_cluster, b_cluster, inv_A_cluster, theta_cluster = self.get_cluster_shared_parameters(agent_label)  # noqa
+            self.update_shared_parameters(agent_label, A_cluster, b_cluster, inv_A_cluster, theta_cluster)  # noqa
+
             self.cluster_thetas[agent_label] = theta_cluster
             self.cluster_inv_A[agent_label] = inv_A_cluster
 

@@ -20,6 +20,7 @@ class ControllerBase:
 
         self.N = N
 
+        self.t = -1  # to be synchonous with the env count
         self.T_i = np.zeros((N,), dtype=int)
 
         self.seed = seed
@@ -38,6 +39,7 @@ class ControllerBase:
     def choose_agent(self):
         """Randomly return the name of an agent."""
         i = self.rng.randint(self.N)
+        self.t += 1  # asynchrone case
         self.T_i[i] += 1
         return f"agent_{i}"
 
@@ -54,11 +56,8 @@ class ControllerBase:
         return best_arms
 
     def default_act(self):
-        """ Make each agent pulls 'default' arm to init the simulation.
-
-        Parameters
-        ----------
-        """
+        """ Choose one agent and makes it pull the 'default' arm to init the
+        simulation. """
         agent_name = self.choose_agent()
         agent = self.agents[agent_name]
         return {agent_name: agent.select_default_arm()}
