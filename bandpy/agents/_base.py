@@ -36,7 +36,7 @@ class MultiLinearAgentsBase:
 
         # shared variables
         self.A = np.copy(self.A_init)
-        self.b = b_init
+        self.b = np.copy(b_init)
         self.inv_A = np.linalg.inv(self.A)
         self.chol_A = np.linalg.cholesky(self.A)
         self.det_A = np.linalg.det(self.A)
@@ -44,7 +44,7 @@ class MultiLinearAgentsBase:
 
         # local variables
         self.A_local = np.copy(self.A_init)
-        self.b_local = b_init
+        self.b_local = np.copy(b_init)
         self.inv_A_local = np.linalg.inv(self.A_local)
         self.chol_A_local = np.linalg.cholesky(self.A_local)
         self.det_A_local = np.linalg.det(self.A_local)
@@ -88,7 +88,7 @@ class MultiLinearAgentsBase:
         self.b_local += last_x_k * last_r
 
         self.det_A_local = det_rank_one_update(self.inv_A_local, self.det_A_local, last_x_k)  # noqa
-        self.inv_A_local = sherman_morrison(self.inv_A_local, last_x_k)  # noqa
+        self.inv_A_local = sherman_morrison(self.inv_A_local, last_x_k)
         self.chol_A_local = cholesky_rank_one_update(self.chol_A_local, last_x_k)  # noqa
         self.theta_hat_local = self.inv_A_local.dot(self.b_local)
 
