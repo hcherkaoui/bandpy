@@ -60,6 +60,65 @@ def tolerant_stats(arrs):
     return results
 
 
+def generate_thetas_arms_1(K, d, n_thetas, seed):
+    """Generate a set of thetas and arms."""
+    rng = check_random_state(seed)
+
+    thetas = [rng.randn(d, 1) for _ in range(n_thetas)]
+    arms = [rng.randn(d, 1) for _ in range(K)]
+
+    return thetas, arms
+
+
+def generate_thetas_arms_2(K, d, angle, tiny_angle, seed):
+    """Generate a set of thetas and arms."""
+    rng = check_random_state(seed)
+
+    thetas = [np.array([1.0] + [0.0] * (d - 1)).reshape((d, 1)),
+              np.array([np.cos(angle), np.sin(angle)] + [0.0] * (d - 2)).reshape((d, 1)),  # noqa
+              ]
+
+    arms = [np.array([1.0, 0.0, np.sin(tiny_angle)] + list(rng.randn(d - 3)))]
+    arms += [np.array([np.cos(angle), np.sin(angle), np.sin(tiny_angle)] + list(rng.randn(d - 3)))]  # noqa
+    arms += [0.5 * (arms[-2] + arms[-1])]
+    arms += [-arms[-1]]
+    arms += [np.array([0.0, 0.0, 0.0] + list(rng.randn(d - 3))) for _ in range(K-4)]  # noqa
+
+    return thetas, arms
+
+
+def generate_thetas_arms_3(K, d, n_thetas=2, angle=np.pi, coef=0.5, seed=None):
+    """Generate arms and thetas."""
+    rng = check_random_state(seed)
+
+    msg = ("Dimension 'd' should be greater than the resquest number of thetas"
+           " 'n_thetas'")
+    assert n_thetas <= d, msg
+
+    thetas = []
+    for i in range(1, n_thetas + 1):
+
+        if i % 2 != 0:
+            theta = np.zeros(shape=(d, 1), dtype=float)
+            theta[i - 1] = 1.0
+
+        else:
+            theta = np.zeros(shape=(d, 1), dtype=float)
+            theta[i - 2] = np.cos(angle)
+            theta[i - 1] = np.sin(angle)
+
+        thetas.append(theta)
+
+    arms = []
+    for theta in thetas:
+
+        norm_theta = np.linalg.norm(theta)
+        arms.extend([theta + coef * norm_theta * rng.randn(*theta.shape)
+                     for _ in range(int(K / n_thetas))])
+
+    return thetas, arms
+
+
 def _fill_mising_values(data, K, col_name=None):
     """Fill missing values with matrix factorization approach."""
 
@@ -95,6 +154,14 @@ def _fill_mising_values(data, K, col_name=None):
 
 
 fill_mising_values = Memory('__cache__', verbose=0).cache(_fill_mising_values)
+
+
+def format_duration(seconds):
+    """Converts a duration in seconds to HH:MM:SS format."""
+    s, ns = divmod(seconds, 1)
+    m, s = divmod(int(s), 60)
+    h, m = divmod(m, 60)
+    return f"{h:02d}h {m:02d}m {s:02d}s {int(1000.0 * ns):03d}ms"
 
 
 def profile_me(func):  # pragma: no cover
