@@ -15,7 +15,9 @@ before_script:
 
 stages:
   - test
-  - example
+  - example-basic
+  - example-illustration
+  - example-benchmark
 
 unit-test:
   stage: test
@@ -30,10 +32,23 @@ unit-test:
         coverage_format: cobertura
         path: coverage.xml
 
-example:
-  stage: example
+example_basic:
+  stage: example-basic
   script:
-    - cd examples/
+    - cd examples/0_basics/
+    - python 0_ellipsoid_overlapping.py
+
+example_illustration:
+  stage: example-illustration
+  script:
+    - cd examples/1_illustrations/
+    - python 0_demo_lin_ucb.py
+    - python 1_demo_quad_ucb.py
+
+example_benchmark:
+  stage: example-benchmark
+  script:
+    - cd examples/2_benchmark/
     - python 0_demo_mab_benchmark.py
-    - python 1_demo_lin_ucb.py
-    - python 2_demo_quad_ucb.py
+    - python 1_demo_lb_benchmark_no_clustering.py
+    - python 2_demo_lb_benchmark_clustering.py
