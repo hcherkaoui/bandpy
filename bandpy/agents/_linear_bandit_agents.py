@@ -9,6 +9,7 @@ from ._base import MultiLinearAgentsBase
 from .._criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
 from .._arms import LinearArms, QuadraticArms, arm_to_quadratic_arm
 from .._compils import sherman_morrison
+from .._checks import check_A_init
 from ..utils import get_d
 
 
@@ -70,14 +71,17 @@ class LinUCB(MultiLinearAgentsBase):
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
-    def __init__(self, alpha, arms=None, arm_entries=None,
+    def __init__(self, alpha, arms=None, arm_entries=None, A_init=None,
                  lbda=1.0, seed=None):
         """Init."""
         d = get_d(arms=arms, arm_entries=arm_entries)
 
+        A_init = check_A_init(d, lbda, A_init)
+        inv_A_init = np.linalg.inv(A_init)
+
         # init internal arms class
-        criterion_kwargs = dict(alpha=alpha, t=0, inv_A=np.eye(d) / lbda)
-        criterion_grad_kwargs = dict(alpha=alpha, t=0, inv_A=np.eye(d) / lbda)
+        criterion_kwargs = dict(alpha=alpha, t=0, inv_A=inv_A_init)
+        criterion_grad_kwargs = dict(alpha=alpha, t=0, inv_A=inv_A_init)
         self.arms = LinearArms(criterion_func=f_neg_ucb,
                                criterion_kwargs=criterion_kwargs,
                                criterion_grad=grad_neg_ucb,
@@ -89,7 +93,8 @@ class LinUCB(MultiLinearAgentsBase):
         self.K = self.arms.K
 
         # init internal variables (inv_A, A, ...)
-        super().__init__(arms=self.arms, lbda=lbda, seed=seed)
+        super().__init__(arms=self.arms, A_init=A_init, lbda=lbda,
+                         seed=seed)
 
     def select_default_arm(self):
         """Select the 'default arm'."""
@@ -115,7 +120,7 @@ class LinUCB(MultiLinearAgentsBase):
         return selected_k_or_arm
 
 
-class QuadUCB(MultiLinearAgentsBase):
+class QuadUCB(MultiLinearAgentsBase):  # TODO need maintenance
     """ Quadratic Upper confidence bound class to define the UCB algorithm.
 
     Parameters
@@ -178,8 +183,7 @@ class QuadUCB(MultiLinearAgentsBase):
         return selected_k_or_arm
 
 
-# TODO make it handle the arm_entries case
-class EOptimalDesign(MultiLinearAgentsBase):
+class EOptimalDesign(MultiLinearAgentsBase):  # TODO need maintenance
     """ E-(trace) optimal design algorithm.
 
     Parameters
@@ -246,8 +250,7 @@ class EOptimalDesign(MultiLinearAgentsBase):
         return self.rng.choice(np.arange(self.arms.K), p=self.p)
 
 
-# TODO make it handle the arm_entries case
-class GreedyLinGapE(MultiLinearAgentsBase):
+class GreedyLinGapE(MultiLinearAgentsBase):  # TODO need maintenance
     """ Linear Gap-based Exploration class to define the LinGapE algorithm.
 
     Parameters
