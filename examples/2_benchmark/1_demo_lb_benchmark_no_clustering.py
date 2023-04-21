@@ -30,12 +30,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--n-trials', type=int, default=1,
                         help='Number of trials.')
-    parser.add_argument('--T', type=int, default=50000,
+    parser.add_argument('--T', type=int, default=10000,
                         help='Number of iterations for the simulation.')
-    parser.add_argument('--K', type=int, default=20,
+    parser.add_argument('--K', type=int, default=10,
                         help='Number of arms.')
-    parser.add_argument('--d', type=int, default=20,
+    parser.add_argument('--d', type=int, default=5,
                         help='Dimension of the problem.')
+    parser.add_argument('--n-clusters', type=int, default=2,
+                        help='Number of agent clusters.')
     parser.add_argument('--alpha', type=float, default=1.0,
                         help='UCB parameter.')
     parser.add_argument('--lbda', type=float, default=1.0,
@@ -76,8 +78,8 @@ if __name__ == '__main__':
                 print("=" * 80)
                 print(f"[Main]: alpha = {alpha:.2f}, N = {N}.")
 
-            thetas, arms = utils.generate_thetas_arms_gaussian(
-                args.K, args.d, n_thetas, angle, tiny_angle, rng)
+            thetas, arms = utils.generate_thetas_arms_1(
+                args.K, args.d, args.n_clusters, args.seed)
 
             S = np.max([np.linalg.norm(theta) for theta in thetas])
 
