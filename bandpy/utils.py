@@ -24,6 +24,11 @@ def _tolerant_concat(arrs):
     return concat_arr
 
 
+def tolerant_median(arrs):
+    """Compute the mean of time-serie of different length."""
+    return np.ma.median(_tolerant_concat(arrs), axis=-1)
+
+
 def tolerant_mean(arrs):
     """Compute the mean of time-serie of different length."""
     return _tolerant_concat(arrs).mean(axis=-1)
