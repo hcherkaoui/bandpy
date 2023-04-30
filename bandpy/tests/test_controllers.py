@@ -111,7 +111,7 @@ class DebuggingLinearAgent(agents.LinUCB):
 @pytest.mark.parametrize('K', [5, 10])
 @pytest.mark.parametrize('d', [2,])
 @pytest.mark.parametrize('T', [5000,])
-@pytest.mark.parametrize('N', [18,])
+@pytest.mark.parametrize('N', [18, 32])
 @pytest.mark.parametrize('lbda', [0.1, 1.0])
 @pytest.mark.parametrize('alpha', [1.0])
 @pytest.mark.parametrize('seed', [0, 1])

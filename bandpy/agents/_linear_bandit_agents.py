@@ -315,7 +315,7 @@ class GreedyLinGapE(MultiLinearAgentsBase):  # TODO need maintenance
         i = np.argmax(ii)
         x_i = self.arms[i].reshape((self.d, 1))
 
-        # best and most uncertain arm
+        # best and most optimist arm
         jj = []
         for x_k in self.arms:
             x_k = x_k.reshape((self.d, 1))
