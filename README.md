@@ -1,5 +1,10 @@
-[![pipeline status](https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/badges/master/pipeline.svg)](https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/-/commits/master)
-[![coverage report](https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/badges/master/coverage.svg)](https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/-/commits/master)
+<p align="center">
+<a href="https://www.python.org/downloads/release/python-390/"><img alt="Python Version" src="https://img.shields.io/badge/python-3.9-blue.svg"></a>
+<a href="https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/-/commits/master"><img alt="Pipeline Status" src="https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/badges/master/pipeline.svg"></a>
+<a href="https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/-/commits/master"><img alt="Coverage Status" src="https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/badges/master/coverage.svg"></a>
+<a href="https://opensource.org/licenses/BSD-3-Clause"><img alt="License: BSD-3" src="https://img.shields.io/badge/License-BSD_3--Clause-blue.svg"></a>
+<a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+</p>
 
 Bandpy
 ======
@@ -31,8 +36,8 @@ In order install the package, run::
 
 To validate the installation, run::
 
-    cd examples/
-    python 1_demo_lin_ucb.py  # to play around with the examples
+    cd examples/1_illustrations
+    python 0_demo_lin_ucb.py  # to play around with the examples
 
 
 Dependencies
