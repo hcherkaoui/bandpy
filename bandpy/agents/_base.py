@@ -5,8 +5,7 @@
 import numpy as np
 
 from .._arms import LinearArms
-from .._compils import (sherman_morrison, det_rank_one_update,
-                        cholesky_rank_one_update)
+from .._compils import sherman_morrison, det_rank_one_update, cholesky_rank_one_update
 from .._checks import check_random_state, check_A_init
 
 
@@ -17,15 +16,20 @@ class MultiLinearAgentsBase:
     Parameters
     ----------
     """
+
     def __init__(self, arms, A_init=None, lbda=1.0, seed=None):
         """Init."""
         self.lbda = lbda
 
         if not isinstance(arms, LinearArms):
             self.arms = LinearArms(
-                            criterion_func=None, criterion_kwargs=None,
-                            criterion_grad=None, criterion_grad_kwargs=None,
-                            arms=arms, arm_entries=None)
+                criterion_func=None,
+                criterion_kwargs=None,
+                criterion_grad=None,
+                criterion_grad_kwargs=None,
+                arms=arms,
+                arm_entries=None,
+            )
         else:
             self.arms = arms
 
@@ -87,9 +91,11 @@ class MultiLinearAgentsBase:
         self.A_local += last_x_k.dot(last_x_k.T)
         self.b_local += last_x_k * last_r
 
-        self.det_A_local = det_rank_one_update(self.inv_A_local, self.det_A_local, last_x_k)  # noqa
+        self.det_A_local = det_rank_one_update(
+            self.inv_A_local, self.det_A_local, last_x_k
+        )
         self.inv_A_local = sherman_morrison(self.inv_A_local, last_x_k)
-        self.chol_A_local = cholesky_rank_one_update(self.chol_A_local, last_x_k)  # noqa
+        self.chol_A_local = cholesky_rank_one_update(self.chol_A_local, last_x_k)
         self.theta_hat_local = self.inv_A_local.dot(self.b_local)
 
     @property
@@ -117,6 +123,7 @@ class SingleMABAgentBase:
     Parameters
     ----------
     """
+
     def __init__(self, K, seed=None):
         """Init."""
         self.K = K

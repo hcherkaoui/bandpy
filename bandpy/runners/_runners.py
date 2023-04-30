@@ -5,18 +5,18 @@
 import copy
 from joblib import Parallel, delayed
 
-from ..controllers._controllers import (ControllerBase, SingleAgentController,
-                                        DynUCB)
+from ..controllers._controllers import ControllerBase, SingleAgentController, DynUCB
 
 
-valid_controllers_class = (ControllerBase,  # base class
-                           SingleAgentController,  # proxy class
-                           DynUCB,  # SOTA class
-                           )
+valid_controllers_class = (
+    ControllerBase,  # base class
+    SingleAgentController,  # proxy class
+    DynUCB,  # SOTA class
+)
 
 
 def run_one_trial(env, agent_or_controller, early_stopping=False, seed=None):
-    """ Run on trial of 'agent_or_controller' with environment 'env'.
+    """Run on trial of 'agent_or_controller' with environment 'env'.
 
     Parameters
     ----------
@@ -49,7 +49,6 @@ def run_one_trial(env, agent_or_controller, early_stopping=False, seed=None):
     observation, reward, _, _ = env.step(action)
 
     while True:
-
         # controller/environment interaction
         action = controller.act(observation, reward)
         observation, reward, done, _ = env.step(action)
@@ -65,12 +64,9 @@ def run_one_trial(env, agent_or_controller, early_stopping=False, seed=None):
     return controller, env
 
 
-def run_trials(env,
-               agent_or_controller,
-               early_stopping=False,
-               seeds=None,
-               n_jobs=1,
-               verbose=True):
+def run_trials(
+    env, agent_or_controller, early_stopping=False, seeds=None, n_jobs=1, verbose=True
+):
     """Run in parallel 'run_one_trial' with the given parameters.
 
     Parameters
@@ -95,17 +91,16 @@ def run_trials(env,
     """
     delayed_pool = []
     for seed in seeds:
-
         trial_kwargs = dict(
-                    env=copy.deepcopy(env),
-                    agent_or_controller=copy.deepcopy(agent_or_controller),
-                    early_stopping=early_stopping,
-                    seed=seed)
+            env=copy.deepcopy(env),
+            agent_or_controller=copy.deepcopy(agent_or_controller),
+            early_stopping=early_stopping,
+            seed=seed,
+        )
 
         delayed_pool.append(delayed(run_one_trial)(**trial_kwargs))
 
     verbose_level = 100 if verbose else 0
-    trial_results = Parallel(n_jobs=n_jobs,
-                             verbose=verbose_level)(delayed_pool)
+    trial_results = Parallel(n_jobs=n_jobs, verbose=verbose_level)(delayed_pool)
 
     return trial_results

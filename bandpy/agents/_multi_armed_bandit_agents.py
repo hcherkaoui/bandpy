@@ -31,8 +31,7 @@ class FollowTheLeader(SingleMABAgentBase):
         Parameters
         ----------
         """
-        mean_reward_per_arms = [np.mean(self.reward_per_arms[k])
-                                for k in range(self.K)]
+        mean_reward_per_arms = [np.mean(self.reward_per_arms[k]) for k in range(self.K)]
         return np.argmax(mean_reward_per_arms)
 
     def update_local(self, last_k, last_r):
@@ -61,7 +60,7 @@ class FollowTheLeader(SingleMABAgentBase):
 
 
 class Uniform(SingleMABAgentBase):
-    """ Uniform class to define a simple agent that choose the arm
+    """Uniform class to define a simple agent that choose the arm
     randomly.
 
     Parameters
@@ -70,6 +69,7 @@ class Uniform(SingleMABAgentBase):
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
+
     def __init__(self, K, seed=None):
         """Init."""
         super().__init__(K=K, seed=seed)
@@ -106,7 +106,7 @@ class Uniform(SingleMABAgentBase):
 
 
 class EC(SingleMABAgentBase):
-    """ Explore-and-Commit class to define a simple agent that randomly explore
+    """Explore-and-Commit class to define a simple agent that randomly explore
     the arms and commit to the best estimated arm.
 
     Parameters
@@ -167,8 +167,9 @@ class EC(SingleMABAgentBase):
         elif (t > self.Te) and not self.done:
             #  trigger once to store 'estimated_best_arm'
 
-            mean_reward_per_arms = [np.mean(self.reward_per_arms[k])
-                                    for k in range(self.K)]
+            mean_reward_per_arms = [
+                np.mean(self.reward_per_arms[k]) for k in range(self.K)
+            ]
             k = np.argmax(mean_reward_per_arms)
 
             self.estimated_best_arm = k
@@ -182,7 +183,7 @@ class EC(SingleMABAgentBase):
 
 
 class UCB(SingleMABAgentBase):
-    """ Upper confidence bound class to define the UCB algorithm.
+    """Upper confidence bound class to define the UCB algorithm.
 
     Parameters
     ----------
@@ -198,8 +199,7 @@ class UCB(SingleMABAgentBase):
         super().__init__(K=K, seed=seed)
 
         if not ((delta > 0.0) and (delta < 1.0)):
-            raise ValueError(f"'delta' should belong to, "
-                             f"]0.0, 1.0[, got {delta}")
+            raise ValueError(f"'delta' should belong to, " f"]0.0, 1.0[, got {delta}")
 
         self.delta = delta
         self.n_pulls_per_arms = dict([(k, 0) for k in range(self.K)])
@@ -213,8 +213,7 @@ class UCB(SingleMABAgentBase):
         Parameters
         ----------
         """
-        mean_reward_per_arms = [np.mean(self.reward_per_arms[k])
-                                for k in range(self.K)]
+        mean_reward_per_arms = [np.mean(self.reward_per_arms[k]) for k in range(self.K)]
         return np.argmax(mean_reward_per_arms)
 
     def update_local(self, last_k, last_r):
@@ -247,7 +246,7 @@ class UCB(SingleMABAgentBase):
             if T_k == 0:
                 uu.append(np.inf)
             else:
-                uu.append(mu_k + np.sqrt(2 * np.log(1.0/self.delta) / T_k))
+                uu.append(mu_k + np.sqrt(2 * np.log(1.0 / self.delta) / T_k))
 
         k = np.argmax(uu)
 

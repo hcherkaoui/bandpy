@@ -14,7 +14,7 @@ from ..utils import get_d
 
 
 class LinUniform(MultiLinearAgentsBase):
-    """ Uniform agent for linear bandit.
+    """Uniform agent for linear bandit.
 
     Parameters
     ----------
@@ -22,14 +22,18 @@ class LinUniform(MultiLinearAgentsBase):
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
+
     def __init__(self, arms=None, arm_entries=None, lbda=1.0, seed=None):
         """Init."""
         # init internal arms class
-        self.arms = LinearArms(criterion_func=None,
-                               criterion_kwargs=None,
-                               criterion_grad=None,
-                               criterion_grad_kwargs=None,
-                               arms=arms, arm_entries=arm_entries)
+        self.arms = LinearArms(
+            criterion_func=None,
+            criterion_kwargs=None,
+            criterion_grad=None,
+            criterion_grad_kwargs=None,
+            arms=arms,
+            arm_entries=arm_entries,
+        )
 
         # init last variables
         self.K = self.arms.K
@@ -62,7 +66,7 @@ class LinUniform(MultiLinearAgentsBase):
 
 
 class LinUCB(MultiLinearAgentsBase):
-    """ Linear Upper confidence bound class to define the UCB algorithm.
+    """Linear Upper confidence bound class to define the UCB algorithm.
 
     Parameters
     ----------
@@ -71,8 +75,10 @@ class LinUCB(MultiLinearAgentsBase):
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
-    def __init__(self, alpha, arms=None, arm_entries=None, A_init=None,
-                 lbda=1.0, seed=None):
+
+    def __init__(
+        self, alpha, arms=None, arm_entries=None, A_init=None, lbda=1.0, seed=None
+    ):
         """Init."""
         d = get_d(arms=arms, arm_entries=arm_entries)
 
@@ -82,19 +88,21 @@ class LinUCB(MultiLinearAgentsBase):
         # init internal arms class
         criterion_kwargs = dict(alpha=alpha, t=0, inv_A=inv_A_init)
         criterion_grad_kwargs = dict(alpha=alpha, t=0, inv_A=inv_A_init)
-        self.arms = LinearArms(criterion_func=f_neg_ucb,
-                               criterion_kwargs=criterion_kwargs,
-                               criterion_grad=grad_neg_ucb,
-                               criterion_grad_kwargs=criterion_grad_kwargs,
-                               arms=arms, arm_entries=arm_entries)
+        self.arms = LinearArms(
+            criterion_func=f_neg_ucb,
+            criterion_kwargs=criterion_kwargs,
+            criterion_grad=grad_neg_ucb,
+            criterion_grad_kwargs=criterion_grad_kwargs,
+            arms=arms,
+            arm_entries=arm_entries,
+        )
 
         # init last variables
         self.alpha = alpha
         self.K = self.arms.K
 
         # init internal variables (inv_A, A, ...)
-        super().__init__(arms=self.arms, A_init=A_init, lbda=lbda,
-                         seed=seed)
+        super().__init__(arms=self.arms, A_init=A_init, lbda=lbda, seed=seed)
 
     def select_default_arm(self):
         """Select the 'default arm'."""
@@ -113,15 +121,16 @@ class LinUCB(MultiLinearAgentsBase):
         kwargs = dict(alpha=self.alpha, t=t, inv_A=self.inv_A)  # shared inv_A
 
         selected_k_or_arm = self.arms.select_arm(
-                                self.theta_hat,  # shared theta
-                                criterion_kwargs=kwargs,
-                                criterion_grad_kwargs=kwargs)
+            self.theta_hat,  # shared theta
+            criterion_kwargs=kwargs,
+            criterion_grad_kwargs=kwargs,
+        )
 
         return selected_k_or_arm
 
 
 class QuadUCB(MultiLinearAgentsBase):  # TODO need maintenance
-    """ Quadratic Upper confidence bound class to define the UCB algorithm.
+    """Quadratic Upper confidence bound class to define the UCB algorithm.
 
     Parameters
     ----------
@@ -130,19 +139,22 @@ class QuadUCB(MultiLinearAgentsBase):  # TODO need maintenance
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
-    def __init__(self, alpha, arms=None, arm_entries=None,
-                 lbda=1.0, seed=None):
+
+    def __init__(self, alpha, arms=None, arm_entries=None, lbda=1.0, seed=None):
         """Init."""
         d = get_d(arms=arms, arm_entries=arm_entries)
 
         # init internal arms class
-        criterion_kwargs = dict(alpha=alpha, t=0, inv_A=np.eye(2 * d + 1) / lbda)  # noqa
-        criterion_grad_kwargs = dict(alpha=alpha, t=0, inv_A=np.eye(2 * d + 1) / lbda)  # noqa
-        self.arms = QuadraticArms(criterion_func=f_neg_ucb,
-                                  criterion_kwargs=criterion_kwargs,
-                                  criterion_grad=grad_neg_ucb,
-                                  criterion_grad_kwargs=criterion_grad_kwargs,
-                                  arms=arms, arm_entries=arm_entries)
+        criterion_kwargs = dict(alpha=alpha, t=0, inv_A=np.eye(2 * d + 1) / lbda)
+        criterion_grad_kwargs = dict(alpha=alpha, t=0, inv_A=np.eye(2 * d + 1) / lbda)
+        self.arms = QuadraticArms(
+            criterion_func=f_neg_ucb,
+            criterion_kwargs=criterion_kwargs,
+            criterion_grad=grad_neg_ucb,
+            criterion_grad_kwargs=criterion_grad_kwargs,
+            arms=arms,
+            arm_entries=arm_entries,
+        )
 
         # init last variables
         self.alpha = alpha
@@ -176,15 +188,16 @@ class QuadUCB(MultiLinearAgentsBase):  # TODO need maintenance
         kwargs = dict(alpha=self.alpha, t=t, inv_A=self.inv_A)  # shared inv_A
 
         selected_k_or_arm = self.arms.select_arm(
-                                self.theta_hat,  # shared theta
-                                criterion_kwargs=kwargs,
-                                criterion_grad_kwargs=kwargs)
+            self.theta_hat,  # shared theta
+            criterion_kwargs=kwargs,
+            criterion_grad_kwargs=kwargs,
+        )
 
         return selected_k_or_arm
 
 
 class EOptimalDesign(MultiLinearAgentsBase):  # TODO need maintenance
-    """ E-(trace) optimal design algorithm.
+    """E-(trace) optimal design algorithm.
 
     Parameters
     ----------
@@ -198,11 +211,14 @@ class EOptimalDesign(MultiLinearAgentsBase):  # TODO need maintenance
         self.eps = eps
 
         # XXX re-use the LinearArms for now
-        self.arms = LinearArms(criterion_func=f_neg_ucb,
-                               criterion_kwargs=dict(),
-                               criterion_grad=grad_neg_ucb,
-                               criterion_grad_kwargs=dict(),
-                               arms=arms, arm_entries=None)
+        self.arms = LinearArms(
+            criterion_func=f_neg_ucb,
+            criterion_kwargs=dict(),
+            criterion_grad=grad_neg_ucb,
+            criterion_grad_kwargs=dict(),
+            arms=arms,
+            arm_entries=None,
+        )
 
         super().__init__(arms=self.arms, lbda=lbda, seed=seed)
 
@@ -211,8 +227,10 @@ class EOptimalDesign(MultiLinearAgentsBase):  # TODO need maintenance
     def _f(self, p):
         """Objective function."""
         A = np.zeros((self.d, self.d), dtype=float)
-        l_xk_xkT = [x_k.reshape((self.d, 1)).dot(x_k.reshape((1, self.d)))
-                    for x_k in self.arms._arms]
+        l_xk_xkT = [
+            x_k.reshape((self.d, 1)).dot(x_k.reshape((1, self.d)))
+            for x_k in self.arms._arms
+        ]
         for p_i, xk_xkT_i in zip(p, l_xk_xkT):
             A += p_i * xk_xkT_i
         return np.linalg.norm(np.linalg.pinv(A))
@@ -226,8 +244,10 @@ class EOptimalDesign(MultiLinearAgentsBase):  # TODO need maintenance
     def _min_f(self):
         """A-optimal design planning function."""
         mu_0 = np.array([1.0 / len(self.arms._arms)] * len(self.arms._arms))
-        constraints = [{'type': 'ineq', 'fun': self._g_1},
-                       {'type': 'eq', 'fun': self._g_2}]
+        constraints = [
+            {"type": "ineq", "fun": self._g_1},
+            {"type": "eq", "fun": self._g_2},
+        ]
         p = optimize.minimize(self._f, x0=mu_0, constraints=constraints).x
         assert not any(p < -self.eps), f"non-negative constraint violated: {p}"
         p[p < 0.0] = 0.0
@@ -251,7 +271,7 @@ class EOptimalDesign(MultiLinearAgentsBase):  # TODO need maintenance
 
 
 class GreedyLinGapE(MultiLinearAgentsBase):  # TODO need maintenance
-    """ Linear Gap-based Exploration class to define the LinGapE algorithm.
+    """Linear Gap-based Exploration class to define the LinGapE algorithm.
 
     Parameters
     ----------
@@ -302,7 +322,7 @@ class GreedyLinGapE(MultiLinearAgentsBase):  # TODO need maintenance
         """Select an arm."""
         # update main statistic variables
         C = np.sqrt(np.linalg.det(self.A))
-        C /= (self.delta * self.lbda ** (self.d/2.0))
+        C /= self.delta * self.lbda ** (self.d / 2.0)
         C = np.sqrt(2 * np.log(C))
         C = float(C * self.R + np.sqrt(self.lbda) * self.S)
 
@@ -319,8 +339,7 @@ class GreedyLinGapE(MultiLinearAgentsBase):  # TODO need maintenance
         jj = []
         for x_k in self.arms:
             x_k = x_k.reshape((self.d, 1))
-            jj.append(_f_ucb(x_k - x_i, C, self.theta_hat,
-                      self.inv_A_local))
+            jj.append(_f_ucb(x_k - x_i, C, self.theta_hat, self.inv_A_local))
         j = np.argmax(jj)
         x_j = self.arms[j].reshape((self.d, 1))
         B = np.max(jj)

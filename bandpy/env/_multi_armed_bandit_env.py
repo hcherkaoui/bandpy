@@ -24,8 +24,10 @@ class BernoulliKBandit(BanditEnvBase):
 
         super().__init__(T=T, seed=seed)
 
-        msg = ("BernoulliKBandit should be instanciated with a 1 dim "
-               "array-like of K probabilities.")
+        msg = (
+            "BernoulliKBandit should be instanciated with a 1 dim "
+            "array-like of K probabilities."
+        )
 
         if isinstance(p, collections.abc.Sequence):
             self.p = np.array(p, dtype=float)
@@ -70,8 +72,10 @@ class GaussianKBandit(BanditEnvBase):
 
         super().__init__(T=T, seed=seed)
 
-        msg = ("'GaussianKBandit' should be instanciated with a 1 dim "
-               "array-like of K means.")
+        msg = (
+            "'GaussianKBandit' should be instanciated with a 1 dim "
+            "array-like of K means."
+        )
 
         if isinstance(mu, collections.abc.Sequence):
             self.mu = np.array(mu, dtype=float)
@@ -84,8 +88,10 @@ class GaussianKBandit(BanditEnvBase):
         else:
             raise ValueError(msg)
 
-        msg = ("'GaussianKBandit' should be instanciated with a 1 dim "
-               "array-like of K standard-deviations.")
+        msg = (
+            "'GaussianKBandit' should be instanciated with a 1 dim "
+            "array-like of K standard-deviations."
+        )
 
         if isinstance(sigma, collections.abc.Sequence):
             self.sigma = np.array(sigma, dtype=float)
@@ -94,9 +100,11 @@ class GaussianKBandit(BanditEnvBase):
                 raise ValueError(msg)
 
         if self.mu.shape != self.sigma.shape:
-            raise ValueError(f"'mu' and 'sigma' should have the same "
-                             f"dimension, got {self.mu.shape}, resp. "
-                             f"{self.sigma.shape}")
+            raise ValueError(
+                f"'mu' and 'sigma' should have the same "
+                f"dimension, got {self.mu.shape}, resp. "
+                f"{self.sigma.shape}"
+            )
 
         self.best_arm = np.argmax(self.mu)
         self.best_reward = np.max(self.mu)

@@ -7,8 +7,8 @@ import numpy as np
 from .._checks import check_random_state, check_actions
 
 
-class BanditEnvBase():
-    """ Virtual class of a Bandit environment.
+class BanditEnvBase:
+    """Virtual class of a Bandit environment.
 
     Parameters
     ----------
@@ -79,20 +79,22 @@ class BanditEnvBase():
 
         self.update_agent_stats(name_agent, y, no_noise_y)
 
-        observation = {'last_arm_pulled': k_or_arm,
-                       'last_reward': y,
-                       'last_no_noise_reward': no_noise_y,
-                       't': self.t,
-                       }
+        observation = {
+            "last_arm_pulled": k_or_arm,
+            "last_reward": y,
+            "last_no_noise_reward": no_noise_y,
+            "t": self.t,
+        }
 
         observation = {name_agent: observation}
 
         reward = {name_agent: y}
 
-        info = {'best_arm': self.best_arm,
-                'best_reward': self.best_reward,
-                'seed': self.seed,
-                }
+        info = {
+            "best_arm": self.best_arm,
+            "best_reward": self.best_reward,
+            "seed": self.seed,
+        }
 
         self.t += 1
 
@@ -111,7 +113,7 @@ class BanditEnvBase():
         self.S_T = self.S_t[-1]
 
         self.no_noise_s_t[self.t - 1] = no_noise_y
-        self.no_noise_S_t[self.t - 1] = self.no_noise_S_t[self.t - 2] + no_noise_y  # noqa
+        self.no_noise_S_t[self.t - 1] = self.no_noise_S_t[self.t - 2] + no_noise_y
         self.no_noise_S_T = self.no_noise_S_t[self.t - 1]
 
         self.best_s_t[self.t - 1] = y_max
@@ -127,5 +129,7 @@ class BanditEnvBase():
         self.R_T = self.R_t[-1]
 
         self.no_noise_r_t[self.t - 1] = y_max - no_noise_y
-        self.no_noise_R_t[self.t - 1] = self.no_noise_R_t[self.t - 2] + y_max - no_noise_y  # noqa
+        self.no_noise_R_t[self.t - 1] = (
+            self.no_noise_R_t[self.t - 2] + y_max - no_noise_y
+        )
         self.no_noise_R_T = self.no_noise_R_t[self.t - 1]

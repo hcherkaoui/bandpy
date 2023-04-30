@@ -6,64 +6,69 @@ import numpy as np
 from scipy.optimize import approx_fprime
 
 from bandpy.utils import pytest_set_up
-from bandpy._criterions import (f_neg_ucb, grad_neg_ucb, f_neg_scalar_prod,
-                                grad_neg_scalar_prod)
+from bandpy._criterions import (
+    f_neg_ucb,
+    grad_neg_ucb,
+    f_neg_scalar_prod,
+    grad_neg_scalar_prod,
+)
 
 
-@pytest.mark.parametrize('d', [2, 10])
-@pytest.mark.parametrize('seed', [0, 1])
+@pytest.mark.parametrize("d", [2, 10])
+@pytest.mark.parametrize("seed", [0, 1])
 def test_f_neg_scalar_prod(d, seed):
     """Test the function of 'f_neg_scalar_prod'."""
     set_up = pytest_set_up(d=d, seed=seed)
 
-    inv_A = set_up['inv_A']
-    x_k = set_up['x_k']
-    theta = set_up['theta']
-    t = set_up['t']
+    inv_A = set_up["inv_A"]
+    x_k = set_up["x_k"]
+    theta = set_up["theta"]
+    t = set_up["t"]
 
     kwargs = dict(alpha=0.0, t=t, inv_A=inv_A)
 
     ref_scalar_prod_ = f_neg_ucb(x_k, theta, **kwargs)
     scalar_prod_ = f_neg_scalar_prod(x_k, theta, **kwargs)
 
-    np.testing.assert_allclose(ref_scalar_prod_, scalar_prod_, rtol=1e-5,
-                               atol=1e-3)
+    np.testing.assert_allclose(ref_scalar_prod_, scalar_prod_, rtol=1e-5, atol=1e-3)
 
 
-@pytest.mark.parametrize('d', [2, 10])
-@pytest.mark.parametrize('seed', [0, 1])
+@pytest.mark.parametrize("d", [2, 10])
+@pytest.mark.parametrize("seed", [0, 1])
 def test_f_neg_ucb(d, seed):
     """Test the function of 'f_neg_ucb'."""
     set_up = pytest_set_up(d=d, seed=seed)
 
-    inv_A = set_up['inv_A']
-    x_k = set_up['x_k']
-    theta = set_up['theta']
-    alpha = set_up['alpha']
-    t = set_up['t']
+    inv_A = set_up["inv_A"]
+    x_k = set_up["x_k"]
+    theta = set_up["theta"]
+    alpha = set_up["alpha"]
+    t = set_up["t"]
 
     kwargs = dict(alpha=alpha, t=t, inv_A=inv_A)
 
     x_k = x_k.ravel()
     theta = theta.ravel()
 
-    f_ucb_x_ref = theta.T.dot(x_k) + alpha * np.sqrt(x_k.T.dot(inv_A).dot(x_k) * np.log(t + 1))  # noqa
-    f_ucb_x = - f_neg_ucb(x_k, theta, **kwargs)
+    f_ucb_x_ref = theta.T.dot(x_k) + alpha * np.sqrt(
+        x_k.T.dot(inv_A).dot(x_k) * np.log(t + 1)
+    )  # noqa
+    f_ucb_x = -f_neg_ucb(x_k, theta, **kwargs)
 
     np.testing.assert_allclose(f_ucb_x, f_ucb_x_ref, rtol=1e-5, atol=1e-3)
 
 
-@pytest.mark.parametrize('d', [2, 10])
-@pytest.mark.parametrize('seed', [0, 1])
+@pytest.mark.parametrize("d", [2, 10])
+@pytest.mark.parametrize("seed", [0, 1])
 def test_grad_neg_ucb(d, seed):
     """Test the gradient of 'grad_neg_ucb'."""
     set_up = pytest_set_up(d=d, seed=seed)
 
-    inv_A = set_up['inv_A']
-    x_k = set_up['x_k']
-    theta = set_up['theta']
-    alpha = set_up['alpha']
-    t = set_up['t']
+    inv_A = set_up["inv_A"]
+    x_k = set_up["x_k"]
+    theta = set_up["theta"]
+    alpha = set_up["alpha"]
+    t = set_up["t"]
 
     kwargs = dict(alpha=alpha, t=t, inv_A=inv_A)
 
@@ -71,6 +76,7 @@ def test_grad_neg_ucb(d, seed):
         def f(x):
             x = x.reshape((d, 1))
             return f_neg_ucb(x, theta, **kwargs)
+
         grad_ = approx_fprime(xk=x.ravel(), f=f, epsilon=1.0e-6)
         return grad_.reshape((d, 1))
 
@@ -80,17 +86,17 @@ def test_grad_neg_ucb(d, seed):
     np.testing.assert_allclose(finite_grad_x_k, grad_x_k, rtol=1e-5, atol=1e-3)
 
 
-@pytest.mark.parametrize('d', [2, 10])
-@pytest.mark.parametrize('seed', [0, 1])
+@pytest.mark.parametrize("d", [2, 10])
+@pytest.mark.parametrize("seed", [0, 1])
 def test_grad_neg_scalar_prod(d, seed):
     """Test the gradient of 'grad_neg_scalar_prod'."""
     set_up = pytest_set_up(d=d, seed=seed)
 
-    inv_A = set_up['inv_A']
-    x_k = set_up['x_k']
-    theta = set_up['theta']
-    alpha = set_up['alpha']
-    t = set_up['t']
+    inv_A = set_up["inv_A"]
+    x_k = set_up["x_k"]
+    theta = set_up["theta"]
+    alpha = set_up["alpha"]
+    t = set_up["t"]
 
     kwargs = dict(alpha=alpha, t=t, inv_A=inv_A)
 
@@ -98,6 +104,7 @@ def test_grad_neg_scalar_prod(d, seed):
         def f(x):
             x = x.reshape((d, 1))
             return f_neg_scalar_prod(x, theta, **kwargs)
+
         grad_ = approx_fprime(xk=x.ravel(), f=f, epsilon=1.0e-6)
         return grad_.reshape((d, 1))
 

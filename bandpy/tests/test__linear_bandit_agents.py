@@ -9,21 +9,20 @@ from bandpy._arms import DEFAULT_ARM_IDX
 from bandpy.utils import pytest_set_up
 
 
-@pytest.mark.parametrize('K', [2, 5, 10])
-@pytest.mark.parametrize('d', [2, 10])
-@pytest.mark.parametrize('seed', [0, 1])
+@pytest.mark.parametrize("K", [2, 5, 10])
+@pytest.mark.parametrize("d", [2, 10])
+@pytest.mark.parametrize("seed", [0, 1])
 def test_LinUniform(d, K, seed):
     """Test the LinUniform agent."""
     set_up = pytest_set_up(d=d, seed=seed)
 
-    seed = set_up['seed']
-    rng = set_up['rng']
-    lbda = set_up['lbda']
+    seed = set_up["seed"]
+    rng = set_up["rng"]
+    lbda = set_up["lbda"]
 
     arms = [rng.randn(d) for _ in range(K)]
 
-    agent_ = agents.LinUniform(arms=arms, arm_entries=None, lbda=lbda,
-                               seed=seed)
+    agent_ = agents.LinUniform(arms=arms, arm_entries=None, lbda=lbda, seed=seed)
 
     assert DEFAULT_ARM_IDX == agent_.select_default_arm()
 

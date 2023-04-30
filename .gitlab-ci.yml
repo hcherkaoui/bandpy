@@ -23,7 +23,7 @@ unit-test:
   stage: test
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   script:
-    - flake8 --count bandpy
+    - flake8 --ignore=E501 --count bandpy
     - pytest -vl --cov=bandpy --cov-append
     - coverage xml
   artifacts:

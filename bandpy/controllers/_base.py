@@ -7,14 +7,13 @@ from ..utils import check_random_state
 
 
 class ControllerBase:
-    """ Abstract class for a controller then handle multiple agents.
+    """Abstract class for a controller then handle multiple agents.
 
     Parameters
     ----------
     """
 
-    def __init__(self, N, agent_cls, agent_kwargs, agent_names=None,
-                 seed=None):
+    def __init__(self, N, agent_cls, agent_kwargs, agent_names=None, seed=None):
         """Init."""
         self.agents = dict()
 
@@ -56,8 +55,8 @@ class ControllerBase:
         return best_arms
 
     def default_act(self):
-        """ Choose one agent and makes it pull the 'default' arm to init the
-        simulation. """
+        """Choose one agent and makes it pull the 'default' arm to init the
+        simulation."""
         agent_name = self.choose_agent()
         agent = self.agents[agent_name]
         return {agent_name: agent.select_default_arm()}

@@ -6,15 +6,21 @@ from scipy import optimize
 
 from ._base import BanditEnvBase
 from ._loaders import movie_lens_loader, yahoo_loader
-from .._checks import (check_random_state, check_K_arms_arm_entries,
-                       check_thetas_and_n_thetas, check_theta_idx)
+from .._checks import (
+    check_random_state,
+    check_K_arms_arm_entries,
+    check_thetas_and_n_thetas,
+    check_theta_idx,
+)
 from .._criterions import f_neg_scalar_prod, grad_neg_scalar_prod
 
 
-DEFAULT_DIR_DATASET_MOVIELENS = ("/mnt/c/Users/hwx1143141/Desktop/datasets/"
-                                 "ml-latest-small")
-DEFAULT_DIR_DATASET_YAHOO = ("/mnt/c/Users/hwx1143141/Desktop/datasets/yahoo/"
-                             "ltrc_yahoo/")
+DEFAULT_DIR_DATASET_MOVIELENS = (
+    "/mnt/c/Users/hwx1143141/Desktop/datasets/" "ml-latest-small"
+)
+DEFAULT_DIR_DATASET_YAHOO = (
+    "/mnt/c/Users/hwx1143141/Desktop/datasets/yahoo/" "ltrc_yahoo/"
+)
 
 NB_MAX_USERS_MOVIELENS = 610
 NB_MAX_USERS_YAHOO = 1266
@@ -42,25 +48,41 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
     seed : np.random.RandomState instance, the random seed.
     """
 
-    def __init__(self, N, T, d, K=None, arms=None, arm_entries=None,
-                 n_thetas=None, theta_idx=None, thetas=None, sigma=1.0,
-                 theta_offset=0.0, shuffle_labels=True, seed=None):
+    def __init__(
+        self,
+        N,
+        T,
+        d,
+        K=None,
+        arms=None,
+        arm_entries=None,
+        n_thetas=None,
+        theta_idx=None,
+        thetas=None,
+        sigma=1.0,
+        theta_offset=0.0,
+        shuffle_labels=True,
+        seed=None,
+    ):
         """Init."""
         if d < 2:
             raise ValueError(f"Dimendion 'd' should be >= 2, got {d}")
 
         # set the bandit parameter along with their cluster
         thetas, n_thetas = check_thetas_and_n_thetas(
-                                        d=d, thetas=thetas, n_thetas=n_thetas,
-                                        theta_offset=theta_offset, seed=seed)
+            d=d, thetas=thetas, n_thetas=n_thetas, theta_offset=theta_offset, seed=seed
+        )
 
         self.thetas = thetas
         self.n_thetas = n_thetas
 
-        self.theta_idx = check_theta_idx(N=N, n_thetas=n_thetas,
-                                         theta_idx=theta_idx,
-                                         shuffle_labels=shuffle_labels,
-                                         seed=seed)
+        self.theta_idx = check_theta_idx(
+            N=N,
+            n_thetas=n_thetas,
+            theta_idx=theta_idx,
+            shuffle_labels=shuffle_labels,
+            seed=seed,
+        )
 
         theta_per_agent = dict()
         for i, theta_i in enumerate(self.theta_idx):
@@ -68,11 +90,9 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
         self.theta_per_agent = theta_per_agent
 
         # set the arm setting
-        parameters = check_K_arms_arm_entries(d=d,
-                                              arms=arms,
-                                              arm_entries=arm_entries,
-                                              K=K,
-                                              seed=seed)
+        parameters = check_K_arms_arm_entries(
+            d=d, arms=arms, arm_entries=arm_entries, K=K, seed=seed
+        )
         return_arm_index, arms, arm_entries, K = parameters
 
         self.return_arm_index = return_arm_index
@@ -93,9 +113,7 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
         self.best_reward = dict()
         self.worst_reward = dict()
         for i, theta in enumerate(self.thetas):
-
             if self.return_arm_index:
-
                 all_rewards = [theta.T.dot(arm) for arm in self.arms]
 
                 self.best_reward[i] = np.max(all_rewards)
@@ -111,22 +129,26 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
                     return grad_neg_scalar_prod(x, theta)
 
                 x0 = np.zeros_like(theta)
-                bounds = [(np.min(entry_vals), np.max(entry_vals))
-                          for entry_vals in self.arm_entries.values()]
+                bounds = [
+                    (np.min(entry_vals), np.max(entry_vals))
+                    for entry_vals in self.arm_entries.values()
+                ]
 
-                res = optimize.minimize(fun=f, jac=grad, x0=x0,
-                                        method='L-BFGS-B', bounds=bounds)
-                best_reward_ = - res.fun
+                res = optimize.minimize(
+                    fun=f, jac=grad, x0=x0, method="L-BFGS-B", bounds=bounds
+                )
+                best_reward_ = -res.fun
                 best_arm_ = res.x
 
                 def f(x):
-                    return - f_neg_scalar_prod(x, theta)
+                    return -f_neg_scalar_prod(x, theta)
 
                 def grad(x):
-                    return - grad_neg_scalar_prod(x, theta)
+                    return -grad_neg_scalar_prod(x, theta)
 
-                res = optimize.minimize(fun=f, jac=grad, x0=x0,
-                                        method='L-BFGS-B', bounds=bounds)
+                res = optimize.minimize(
+                    fun=f, jac=grad, x0=x0, method="L-BFGS-B", bounds=bounds
+                )
                 worst_reward_ = res.fun
 
                 self.best_reward[i] = best_reward_
@@ -169,7 +191,7 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
 
 
 class DatasetEnv(BanditEnvBase):  # pragma: no cover
-    """ Environment based on a real dataset. """
+    """Environment based on a real dataset."""
 
     def __init__(self, T, N, K, d, dirname, sigma=0.0, seed=None):
         """Init."""
@@ -202,7 +224,6 @@ class DatasetEnv(BanditEnvBase):  # pragma: no cover
         self.best_arm = dict()
         self.best_reward, self.worst_reward = dict(), dict()
         for i in range(self.N):
-
             id = self.agent_i_to_env_agent_i[f"agent_{i}"]
             all_rewards = [self.get_no_noise_y(id, k) for k in range(self.K)]
 
@@ -212,13 +233,14 @@ class DatasetEnv(BanditEnvBase):  # pragma: no cover
 
     def get_no_noise_y(self, agent_id, arm_id):
         """Get the reward for agent `agent_id` and arm `arm_id`."""
-        filter_entry = ((self.data.agent_id == agent_id)
-                        & (self.data.arm_id == arm_id))
+        filter_entry = (self.data.agent_id == agent_id) & (self.data.arm_id == arm_id)
         if not self.data[filter_entry].empty:
             return float(self.data[filter_entry].reward)
         else:
-            raise ValueError(f"DataFrame does not have reward for 'agent' = "
-                             f"{agent_id} and 'arm' = {arm_id}.")
+            raise ValueError(
+                f"DataFrame does not have reward for 'agent' = "
+                f"{agent_id} and 'arm' = {arm_id}."
+            )
 
     def update_agent_stats(self, name_agent, y, no_noise_y):
         """Update all statistic as listed in __init__ doc."""
@@ -238,39 +260,48 @@ class DatasetEnv(BanditEnvBase):  # pragma: no cover
 
 
 class MovieLensEnv(DatasetEnv):  # pragma: no cover
-    """ Movie-Lens Bandit environment. """
+    """Movie-Lens Bandit environment."""
 
-    def __init__(self, T, N, K, d, sigma=1.0,
-                 dirname=DEFAULT_DIR_DATASET_MOVIELENS, seed=None):
+    def __init__(
+        self, T, N, K, d, sigma=1.0, dirname=DEFAULT_DIR_DATASET_MOVIELENS, seed=None
+    ):
         """Init."""
         if N > NB_MAX_USERS_MOVIELENS:
-            raise ValueError(f"Maximum agent number is "
-                             f"{NB_MAX_USERS_MOVIELENS}, got N={N}")
+            raise ValueError(
+                f"Maximum agent number is " f"{NB_MAX_USERS_MOVIELENS}, got N={N}"
+            )
 
-        super().__init__(T=T, N=N, K=K, d=d, sigma=sigma, dirname=dirname,
-                         seed=seed)
+        super().__init__(T=T, N=N, K=K, d=d, sigma=sigma, dirname=dirname, seed=seed)
 
     def load_dataset(self, dirname, N, K, d):
         return movie_lens_loader(dirname, N, K, d)
 
 
 class YahooEnv(DatasetEnv):  # pragma: no cover
-    """ Yahoo Bandit environment. """
+    """Yahoo Bandit environment."""
 
-    def __init__(self, T, N, K, d, sigma=1.0,
-                 dirname=DEFAULT_DIR_DATASET_YAHOO, n_clusters_k_means=100,
-                 seed=None):
+    def __init__(
+        self,
+        T,
+        N,
+        K,
+        d,
+        sigma=1.0,
+        dirname=DEFAULT_DIR_DATASET_YAHOO,
+        n_clusters_k_means=100,
+        seed=None,
+    ):
         """Init."""
         if N > NB_MAX_USERS_YAHOO:
-            raise ValueError(f"Maximum agent number is "
-                             f"{NB_MAX_USERS_YAHOO}, got N={N}")
+            raise ValueError(
+                f"Maximum agent number is " f"{NB_MAX_USERS_YAHOO}, got N={N}"
+            )
 
         self.n_clusters_k_means = n_clusters_k_means
 
-        super().__init__(T=T, N=N, K=K, d=d, sigma=sigma, dirname=dirname,
-                         seed=seed)
+        super().__init__(T=T, N=N, K=K, d=d, sigma=sigma, dirname=dirname, seed=seed)
 
     def load_dataset(self, dirname, N, K, d):
-        return yahoo_loader(dirname, N, K, d,
-                            n_clusters_k_means=self.n_clusters_k_means,
-                            seed=self.seed)
+        return yahoo_loader(
+            dirname, N, K, d, n_clusters_k_means=self.n_clusters_k_means, seed=self.seed
+        )

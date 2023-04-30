@@ -65,4 +65,4 @@ In order to launch the unit-tests, run the command::
 
 In order to check the PEP 8 compliance level of the package, run the command::
 
-    flake8 --count bandpy
+    flake8 --ignore=E501 --count bandpy
