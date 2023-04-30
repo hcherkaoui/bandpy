@@ -270,12 +270,12 @@ class CLUB(AbstractCLUB):
 
     def update_clusters(self, i):
         """Update raw/col i-th of the similarity graph G."""
-        cb_i = (1.0 + np.log(1.0 + self.T_i[i])) / (1.0 + self.T_i[i])
+        cb_i = np.sqrt((1.0 + np.log(1.0 + self.T_i[i])) / (1.0 + self.T_i[i]))
         theta_i = self.agents[self.agent_names[i]].theta_hat_local
 
-        for j in range(self.N):
+        for j in set(self.graph_G.neighbors(i)) - set([i]):
 
-            cb_j = (1.0 + np.log(1.0 + self.T_i[j])) / (1.0 + self.T_i[j])
+            cb_j = np.sqrt((1.0 + np.log(1.0 + self.T_i[j])) / (1.0 + self.T_i[j]))  # noqa
             ub = self.gamma * (cb_i + cb_j)
 
             theta_j = self.agents[self.agent_names[j]].theta_hat_local
@@ -283,8 +283,7 @@ class CLUB(AbstractCLUB):
             norm_diff_thetas = np.sqrt(diff_thetas.dot(diff_thetas))
 
             if norm_diff_thetas > ub:
-                if self.graph_G.has_edge(i, j):
-                    self.graph_G.remove_edge(i, j)
+                self.graph_G.remove_edge(i, j)
 
         self.comps = list(nx.connected_components(self.graph_G))
 
@@ -361,8 +360,7 @@ class LBC(AbstractCLUB):
                              theta_j=theta_j)
 
             if min_K < 0.0:
-                if self.graph_G.has_edge(i, j):
-                    self.graph_G.remove_edge(i, j)
+                self.graph_G.remove_edge(i, j)
 
         self.comps = list(nx.connected_components(self.graph_G))
 
