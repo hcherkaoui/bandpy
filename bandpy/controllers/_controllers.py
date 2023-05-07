@@ -383,6 +383,43 @@ class LBC(AbstractCLUB):
             for i in comp:
                 self.agent_labels[self.agent_names[i]] = label
 
+    def get_neighbors_shared_parameters(self, agent_name):
+        """Get the parameters of 'cluster_idx'."""
+        i = int(agent_name.split("_")[1])
+        A = np.copy(self.A_init)
+        b = np.zeros((self.d, 1))
+        for j in set(self.graph_G.neighbors(i)):
+            A += self.agents[f"agent_{j}"].A_local - self.A_init
+            b += self.agents[f"agent_{j}"].b_local
+        inv_A = np.linalg.inv(A)
+        theta = inv_A.dot(b)
+        return A, b, inv_A, theta
+
+    def act(self, observation, reward):
+        """Make each agent choose an arm in a clustered way."""
+        observation, reward = self.check_observation_reward(observation, reward)  # noqa
+
+        last_agent_name = next(iter(observation.keys()))
+        last_agent_i = int(last_agent_name.split("_")[1])
+
+        last_k_or_arm = observation[last_agent_name]["last_arm_pulled"]
+        last_r = observation[last_agent_name]["last_reward"]
+        t = observation[last_agent_name]["t"]
+
+        self.agents[last_agent_name]._update_local(last_k_or_arm, last_r)
+
+        self.update_clusters(t, last_agent_i)
+        self.archive_labels()
+
+        agent_name = self.choose_agent()
+
+        _, _, inv_A, theta = self.get_neighbors_shared_parameters(agent_name)
+        k = self.pull_arm_ucb(t, inv_A, theta)
+
+        self.check_if_controller_done()
+
+        return {agent_name: k}
+
 
 class DynUCB:
     """Dynamic UCB as defined in ```Dynamic Clustering of Contextual

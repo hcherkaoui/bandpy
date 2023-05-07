@@ -107,7 +107,7 @@ def _yahoo_loader(dirname, N, K, d, n_clusters_k_means=100, seed=None):
     # reduce the number of consulted documents (arms) with k-means
     filter_arms = (data.columns != "rating") & (data.columns != "user_id")
     X_train = np.unique(data.loc[:, filter_arms], axis=0)
-    kmeans = KMeans(n_clusters=n_clusters_k_means, n_init='auto').fit(X_train)
+    kmeans = KMeans(n_clusters=n_clusters_k_means, n_init="auto").fit(X_train)
     X_test = data.loc[:, filter_arms].to_numpy()
     data.loc[:, "item_id"] = kmeans.predict(X_test)
 

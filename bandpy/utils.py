@@ -76,7 +76,9 @@ def generate_thetas_arms_1(K, d, n_thetas=2, offset=0.0, seed=None):
     return thetas, arms
 
 
-def generate_thetas_arms_2(K, d, angle=np.pi, tiny_angle=np.pi/16.0, seed=None):
+def generate_thetas_arms_2(
+    K, d, angle=np.pi, tiny_angle=np.pi / 16.0, seed=None
+):  # noqa
     """Generate a set of thetas and arms."""
     rng = check_random_state(seed)
 
@@ -98,7 +100,9 @@ def generate_thetas_arms_2(K, d, angle=np.pi, tiny_angle=np.pi/16.0, seed=None):
     return thetas, arms
 
 
-def generate_thetas_arms_3(K, d, n_thetas=2, angle=np.pi, coef=0.5, offset=0.0, seed=None):
+def generate_thetas_arms_3(
+    K, d, n_thetas=2, angle=np.pi, coef=0.5, offset=0.0, seed=None
+):
     """Generate arms and thetas."""
     rng = check_random_state(seed)
 
