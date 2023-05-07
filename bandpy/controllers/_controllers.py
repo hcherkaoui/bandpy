@@ -72,7 +72,7 @@ class ClusteringController(ControllerBase):
         assert len(reward) == 1, msg
         return observation, reward
 
-    def cluster_agents(self, t):
+    def cluster_agents(self, t, i):
         """Cluster all the agents from their estimated theta."""
         raise NotImplementedError
 
@@ -81,6 +81,7 @@ class ClusteringController(ControllerBase):
         self.check_observation_reward(observation, reward)
 
         last_agent_name = next(iter(observation.keys()))
+        last_agent_i = int(last_agent_name.split("_")[1])
 
         last_k_or_arm = observation[last_agent_name]["last_arm_pulled"]
         last_r = observation[last_agent_name]["last_reward"]
@@ -88,7 +89,7 @@ class ClusteringController(ControllerBase):
 
         self.agents[last_agent_name].update_local(last_k_or_arm, last_r)
 
-        self.cluster_agents(t)
+        self.cluster_agents(t, last_agent_i)
 
         self.archive_labels()
 
@@ -124,7 +125,7 @@ class SingleCluster(ClusteringController):
             seed=seed,
         )
 
-    def cluster_agents(self, t):
+    def cluster_agents(self, t, i):
         """Cluster all the agents from their estimated theta."""
         pass
 
@@ -147,7 +148,7 @@ class Decentralized(ClusteringController):
             seed=seed,
         )
 
-    def cluster_agents(self, t):
+    def cluster_agents(self, t, i):
         """Cluster all the agents from their estimated theta."""
         pass
 
@@ -172,7 +173,7 @@ class OracleClustering(ClusteringController):
             seed=seed,
         )
 
-    def cluster_agents(self, t):
+    def cluster_agents(self, t, i):
         """Cluster all the agents from their estimated theta."""
         pass
 
@@ -222,7 +223,7 @@ class AbstractCLUB(ClusteringController):
 
         self.agents[last_agent_name]._update_local(last_k_or_arm, last_r)
 
-        self.update_clusters(last_agent_i)
+        self.update_clusters(t, last_agent_i)
         self.archive_labels()
 
         agent_name = self.choose_agent()
@@ -279,7 +280,7 @@ class CLUB(AbstractCLUB):
         self.comps = [set(range(N))]
         self.l_labels = [list(np.zeros(N))]
 
-    def update_clusters(self, i):
+    def update_clusters(self, t, i):
         """Update raw/col i-th of the similarity graph G."""
         cb_i = np.sqrt((1.0 + np.log(1.0 + self.T_i[i])) / (1.0 + self.T_i[i]))
         theta_i = self.agents[self.agent_names[i]].theta_hat_local
@@ -352,7 +353,7 @@ class LBC(AbstractCLUB):
         self.comps = [set(range(N))]
         self.l_labels = [list(np.zeros(N))]
 
-    def update_clusters(self, i):
+    def update_clusters(self, t, i):
         """Update raw/col i-th of the similarity graph G."""
         agent_i = self.agents[self.agent_names[i]]
         eps_i = self.a + self.R * np.sqrt(
