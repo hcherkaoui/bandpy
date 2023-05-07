@@ -1,7 +1,8 @@
-image: python:3.9.9
+image: python:latest
 
 before_script:
   - python --version
+  - pip --version
 
   # redirect of the Huawei mirror
   - echo -e "[global]\nindex-url = http://mirrors.tools.huawei.com/pypi/simple\ntrusted-host = mirrors.tools.huawei.com\ntimeout = 120" > ~/.pip/pip.conf

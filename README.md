@@ -1,5 +1,5 @@
 <p align="center">
-<a href="https://www.python.org/downloads/release/python-390/"><img alt="Python Version" src="https://img.shields.io/badge/python-3.9-blue.svg"></a>
+<a href="https://www.python.org/download/releases/3.0/"><img alt="Python Version" src="https://img.shields.io/badge/python-3-blue.svg"></a>
 <a href="https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/-/commits/master"><img alt="Pipeline Status" src="https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/badges/master/pipeline.svg"></a>
 <a href="https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/-/commits/master"><img alt="Coverage Status" src="https://rnd-gitlab-eu.huawei.com/Noahs-Ark/libraries/bandpy/badges/master/coverage.svg"></a>
 <a href="https://opensource.org/licenses/BSD-3-Clause"><img alt="License: BSD-3" src="https://img.shields.io/badge/License-BSD_3--Clause-blue.svg"></a>
