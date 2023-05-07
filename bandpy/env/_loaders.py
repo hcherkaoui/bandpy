@@ -10,11 +10,16 @@ from sklearn.cluster import KMeans
 from ..utils import fill_mising_values, check_random_state
 
 
+MAX_K = 30
 N_FEATURES_YAHOO = 700
 
 
-def _movie_lens_loader(dirname, N, K, d):
+def _movie_lens_loader(dirname, N, K, d, seed=None):
     """Load and preprocess the internal MovieLens dataset."""
+    assert K <= MAX_K, f"Maximum number of arms is {MAX_K}, got {K}"
+
+    rng = check_random_state(seed)
+
     movies_filename = os.path.join(dirname, "movies.csv")
     ratings_filename = os.path.join(dirname, "ratings.csv")
     movies = pd.read_csv(movies_filename, sep=",")
@@ -22,9 +27,10 @@ def _movie_lens_loader(dirname, N, K, d):
 
     ratings.drop(columns="timestamp", inplace=True)
 
-    # reindex users
+    # reindex randomly users
     old_user_id = np.unique(ratings.userId.astype(int))
     new_user_id = np.arange(len(old_user_id))
+    new_user_id = rng.permutation(new_user_id)
     ratings.userId = ratings.userId.map(dict(zip(old_user_id, new_user_id)))
 
     col_name = {"userId": "user_id", "movieId": "item_id", "rating": "rating"}
@@ -55,6 +61,7 @@ def _movie_lens_loader(dirname, N, K, d):
 
 def _yahoo_loader(dirname, N, K, d, n_clusters_k_means=100, seed=None):
     """Load the internal Yahoo dataset."""
+    assert K <= MAX_K, f"Maximum number of arms is {MAX_K}, got {K}"
 
     rng = check_random_state(seed)
 
@@ -100,7 +107,7 @@ def _yahoo_loader(dirname, N, K, d, n_clusters_k_means=100, seed=None):
     # reduce the number of consulted documents (arms) with k-means
     filter_arms = (data.columns != "rating") & (data.columns != "user_id")
     X_train = np.unique(data.loc[:, filter_arms], axis=0)
-    kmeans = KMeans(n_clusters=n_clusters_k_means).fit(X_train)
+    kmeans = KMeans(n_clusters=n_clusters_k_means, n_init='auto').fit(X_train)
     X_test = data.loc[:, filter_arms].to_numpy()
     data.loc[:, "item_id"] = kmeans.predict(X_test)
 

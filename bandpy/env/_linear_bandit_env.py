@@ -274,7 +274,7 @@ class MovieLensEnv(DatasetEnv):  # pragma: no cover
         super().__init__(T=T, N=N, K=K, d=d, sigma=sigma, dirname=dirname, seed=seed)
 
     def load_dataset(self, dirname, N, K, d):
-        return movie_lens_loader(dirname, N, K, d)
+        return movie_lens_loader(dirname, N, K, d, seed=self.seed)
 
 
 class YahooEnv(DatasetEnv):  # pragma: no cover
