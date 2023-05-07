@@ -87,7 +87,7 @@ if __name__ == "__main__":
                 print(f"[Main]: alpha = {alpha:.2f}, N = {N}.")
 
             thetas, arms = utils.generate_thetas_arms_1(
-                args.K, args.d, args.n_clusters, args.seed
+                K=args.K, d=args.d, n_thetas=args.n_clusters, seed=args.seed
             )
 
             S = np.max([np.linalg.norm(theta) for theta in thetas])
