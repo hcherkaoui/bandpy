@@ -66,17 +66,17 @@ def tolerant_stats(arrs):
     return results
 
 
-def generate_thetas_arms_1(K, d, n_thetas, seed):
+def generate_thetas_arms_1(K, d, n_thetas=2, offset=0.0, seed=None):
     """Generate a set of thetas and arms."""
     rng = check_random_state(seed)
 
-    thetas = [rng.randn(d, 1) for _ in range(n_thetas)]
+    thetas = [rng.randn(d, 1) + offset for _ in range(n_thetas)]
     arms = [rng.randn(d, 1) for _ in range(K)]
 
     return thetas, arms
 
 
-def generate_thetas_arms_2(K, d, angle, tiny_angle, seed):
+def generate_thetas_arms_2(K, d, angle=np.pi, tiny_angle=np.pi/16.0, seed=None):
     """Generate a set of thetas and arms."""
     rng = check_random_state(seed)
 
@@ -98,7 +98,7 @@ def generate_thetas_arms_2(K, d, angle, tiny_angle, seed):
     return thetas, arms
 
 
-def generate_thetas_arms_3(K, d, n_thetas=2, angle=np.pi, coef=0.5, seed=None):
+def generate_thetas_arms_3(K, d, n_thetas=2, angle=np.pi, coef=0.5, offset=0.0, seed=None):
     """Generate arms and thetas."""
     rng = check_random_state(seed)
 
@@ -119,7 +119,7 @@ def generate_thetas_arms_3(K, d, n_thetas=2, angle=np.pi, coef=0.5, seed=None):
             theta[i - 2] = np.cos(angle)
             theta[i - 1] = np.sin(angle)
 
-        thetas.append(theta)
+        thetas.append(theta + offset)
 
     arms = []
     for theta in thetas:
