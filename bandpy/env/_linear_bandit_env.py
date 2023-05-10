@@ -1,6 +1,7 @@
 """ Define all the linear bandit environments availables in Bandpy. """
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
+import os
 import numpy as np
 from scipy import optimize
 
@@ -15,11 +16,12 @@ from .._checks import (
 from .._criterions import f_neg_scalar_prod, grad_neg_scalar_prod
 
 
+HOME_DIR = os.path.expanduser('~')
 DEFAULT_DIR_DATASET_MOVIELENS = (
-    "/mnt/c/Users/hwx1143141/Desktop/datasets/" "ml-latest-small"
+    os.path.join(HOME_DIR, "/bandpy_data/ml-latest-small")
 )
 DEFAULT_DIR_DATASET_YAHOO = (
-    "/mnt/c/Users/hwx1143141/Desktop/datasets/yahoo/" "ltrc_yahoo/"
+    os.path.join(HOME_DIR, "bandpy_data/yahoo/ltrc_yahoo/")
 )
 
 NB_MAX_USERS_MOVIELENS = 610

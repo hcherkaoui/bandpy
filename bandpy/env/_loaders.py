@@ -8,6 +8,7 @@ from joblib import Memory
 from sklearn.cluster import KMeans
 
 from ..utils import fill_mising_values, check_random_state
+from ._downloader import download_movielens_dataset, download_yahoo_dataset
 
 
 MAX_K = 30
@@ -16,6 +17,10 @@ N_FEATURES_YAHOO = 700
 
 def _movie_lens_loader(dirname, N, K, d, seed=None):
     """Load and preprocess the internal MovieLens dataset."""
+
+    if not os.path.isdir(dirname):
+        dirname = download_movielens_dataset(data_dir=dirname)
+
     assert K <= MAX_K, f"Maximum number of arms is {MAX_K}, got {K}"
 
     rng = check_random_state(seed)
@@ -61,6 +66,10 @@ def _movie_lens_loader(dirname, N, K, d, seed=None):
 
 def _yahoo_loader(dirname, N, K, d, n_clusters_k_means=100, seed=None):
     """Load the internal Yahoo dataset."""
+
+    if not os.path.isdir(dirname):
+        dirname = download_yahoo_dataset(data_dir=dirname)
+
     assert K <= MAX_K, f"Maximum number of arms is {MAX_K}, got {K}"
 
     rng = check_random_state(seed)
