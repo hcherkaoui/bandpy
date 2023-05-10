@@ -6,4 +6,5 @@ joblib>=0.16.0
 scikit_learn>=1.0.2
 networkx>=2.8.6
 gym>=0.23.1
+wget>=3.0
 matrix_factorization

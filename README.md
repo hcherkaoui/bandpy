@@ -53,6 +53,7 @@ The required dependencies to use the software are:
  * Scikit-Learn (>=1.0.2)
  * Networkx (>=2.8.6)
  * Gym (>=0.23.1)
+ * Wget (>=3.0)
  * matrix_factorization
 
 Dev

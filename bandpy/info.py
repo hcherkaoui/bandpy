@@ -97,6 +97,14 @@ REQUIRED_MODULE_METADATA = (
         },
     ),
     (
+        "wget",
+        {
+            "min_version": "3.0",
+            "required_at_installation": True,
+            "install_info": _BANDPY_INSTALL_MSG,
+        },
+    ),
+    (
         "matrix_factorization",
         {
             "min_version": "0.0.0",  # no version avalaible
