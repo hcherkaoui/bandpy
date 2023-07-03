@@ -16,13 +16,9 @@ from .._checks import (
 from .._criterions import f_neg_scalar_prod, grad_neg_scalar_prod
 
 
-HOME_DIR = os.path.expanduser('~')
-DEFAULT_DIR_DATASET_MOVIELENS = (
-    os.path.join(HOME_DIR, "/bandpy_data/ml-latest-small")
-)
-DEFAULT_DIR_DATASET_YAHOO = (
-    os.path.join(HOME_DIR, "bandpy_data/yahoo/ltrc_yahoo/")
-)
+HOME_DIR = os.path.expanduser("~")
+DEFAULT_DIR_DATASET_MOVIELENS = os.path.join(HOME_DIR, "/bandpy_data/ml-latest-small")
+DEFAULT_DIR_DATASET_YAHOO = os.path.join(HOME_DIR, "bandpy_data/yahoo/ltrc_yahoo/")
 
 NB_MAX_USERS_MOVIELENS = 610
 NB_MAX_USERS_YAHOO = 1266
@@ -187,6 +183,94 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
         theta = self.thetas[self.theta_per_agent[agent_name]]
 
         no_noise_y = float(x_k.T.dot(theta))
+        noise = float(self.sigma * self.rng.randn())
+
+        return noise + no_noise_y, no_noise_y
+
+
+class GaussianLinearBanditWithState(ClusteredGaussianLinearBandit):
+    """'GaussianLinearBanditWithState' class to define a Linear Bandit in
+    dimension 'd'. The arms and the theta are drawn following a Gaussian. The
+    reward is defined as 'r = theta_l_k.T.dot(x_k) + noise' with noise drawn
+    from a centered Gaussian distribution.
+
+    Parameters
+    ----------
+    N :
+    T : int, the iteration finite horizon.
+    d : int, dimension of the problem.
+    K : int,
+    arms : list of array,
+    arm_entries : dict of list,
+    n_thetas : int, number of theta for the model.
+    thetas : list of array,
+    sigma : float, standard deviation of the noise.
+    theta_offset : float,
+    shuffle_labels : bool,
+    seed : np.random.RandomState instance, the random seed.
+    """
+
+    def __init__(
+        self,
+        N,
+        T,
+        d,
+        transition_probs=None,
+        states=None,
+        K=None,
+        arms=None,
+        arm_entries=None,
+        n_thetas=None,
+        theta_idx=None,
+        thetas=None,
+        sigma=1.0,
+        theta_offset=0.0,
+        shuffle_labels=True,
+        seed=None,
+    ):
+        self.transition_probs = transition_probs
+        self.states = states
+        self.current_state = states[0]
+
+        super().__init__(
+            N=N,
+            T=T,
+            d=d,
+            K=K,
+            arms=arms,
+            arm_entries=arm_entries,
+            n_thetas=n_thetas,
+            theta_idx=theta_idx,
+            thetas=thetas,
+            sigma=sigma,
+            theta_offset=theta_offset,
+            shuffle_labels=shuffle_labels,
+            seed=seed,
+        )
+
+    def generate_next_state(self):
+        """Generate the next state based on the current state and transition probabilities."""
+        p = np.array(
+            self.transition_probs[np.argwhere(self.states == self.current_state)]
+        ).ravel()
+        return np.random.choice(self.states, p=p)
+
+    def compute_reward(self, agent_name, k_or_arm):
+        """Compute the reward associated to the given arm or arm-index.
+
+        Parameters
+        ----------
+        """
+        if isinstance(k_or_arm, (int, np.integer)):
+            x_k = self.arms[k_or_arm].reshape((self.d, 1))
+
+        else:
+            x_k = k_or_arm.reshape((self.d, 1))
+
+        theta = self.thetas[self.theta_per_agent[agent_name]]
+        self.current_state = self.generate_next_state()
+
+        no_noise_y = float(x_k.T.dot(theta)) + self.current_state
         noise = float(self.sigma * self.rng.randn())
 
         return noise + no_noise_y, no_noise_y

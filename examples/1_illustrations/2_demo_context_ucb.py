@@ -1,7 +1,7 @@
-""" Simple example with QuadUCB policy.
+""" Simple example with LinUCB policy.
 
 Launch it with ::
-    $ python 2_demo_quad_ucb.py --n-jobs 5 --verbose
+    $ python 1_demo_lin_ucb.py --n-jobs 5 --verbose
 
 """
 
@@ -28,6 +28,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--T", type=int, default=50000, help="Number of iterations for the simulation."
     )
+    parser.add_argument(
+        "--states-scale", type=float, default=1.0, help="State values scaling scalar."
+    )
+    parser.add_argument("--n-states", type=int, default=5, help="Number of states.")
     parser.add_argument("--K", type=int, default=20, help="Number of arms.")
     parser.add_argument("--d", type=int, default=20, help="Dimension of the problem.")
     parser.add_argument("--alpha", type=float, default=1.0, help="UCB parameter.")
@@ -48,7 +52,10 @@ if __name__ == "__main__":
         help="Number of jobs to run in parallel the trials.",
     )
     parser.add_argument(
-        "--fig-fname", type=str, default="1_demo_quad_ucb.pdf", help="Figure filename."
+        "--fig-fname",
+        type=str,
+        default="2_demo_context_ucb.pdf",
+        help="Figure filename.",
     )
     parser.add_argument("--verbose", action="store_true", help="Verbosity level.")
     args = parser.parse_args()
@@ -58,10 +65,18 @@ if __name__ == "__main__":
     if args.verbose:
         print("[Main] Setting simulation")
 
-    bandit_env = env.ClusteredGaussianLinearBandit(
+    states = args.states_scale * np.linspace(0.0, 1.0, args.n_states)
+
+    p = np.random.rand(args.n_states, args.n_states)
+    p /= p.sum(axis=0, keepdims=True)
+    p /= p.sum(axis=1, keepdims=True)
+
+    bandit_env = env.GaussianLinearBanditWithState(
         N=args.N,
         T=args.T,
         d=args.d,
+        transition_probs=p,
+        states=states,
         K=args.K,
         n_thetas=1,
         sigma=args.sigma,
@@ -69,7 +84,7 @@ if __name__ == "__main__":
         seed=args.seed,
     )
 
-    agent_cls = agents.QuadUCB
+    agent_cls = agents.LinUCB
     agent_kwargs = {
         "alpha": args.alpha,
         "arms": bandit_env.arms,
