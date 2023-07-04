@@ -270,10 +270,11 @@ class GaussianLinearBanditWithState(ClusteredGaussianLinearBandit):
         theta = self.thetas[self.theta_per_agent[agent_name]]
         self.current_state = self.generate_next_state()
 
-        no_noise_y = float(x_k.T.dot(theta)) + self.current_state
+        no_noise_y = float(x_k.T.dot(theta))
+        state = self.current_state
         noise = float(self.sigma * self.rng.randn())
 
-        return noise + no_noise_y, no_noise_y
+        return noise + state + no_noise_y, no_noise_y
 
 
 class DatasetEnv(BanditEnvBase):  # pragma: no cover
