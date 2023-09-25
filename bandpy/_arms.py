@@ -121,6 +121,7 @@ class LinearArms:
             self.return_arm_index = True
 
             self.K = len(arms)
+            self.k = 0
             self.d = arms[0].shape[0]
 
         # if 'arms' is not avalaible fall back on arm_entries
@@ -140,6 +141,39 @@ class LinearArms:
             raise ValueError(
                 "To init 'LinearArms' class, either pass 'arms'"
                 " and 'arm_entries', none of them was given."
+            )
+
+    def __iter__(self):
+        self.k = 0
+        return self
+
+    def __next__(self):
+        if self._arm_entries is not None:
+            raise ValueError(
+                "'LinearArms' is not iterable if, at the "
+                "initialization, an 'arm_entries' was passed."
+            )
+
+        if self.k < self.K:
+            _arms = self._arms[self.k]
+            self.k += 1
+            return _arms
+
+        else:
+            raise StopIteration
+
+    def __getitem__(self, k):
+        if self._arm_entries is not None:
+            raise ValueError(
+                "'LinearArms' is not subscriptable if, at the "
+                "initialization, an 'arm_entries' was passed."
+            )
+
+        if k >= 0 and k < self.K:
+            return self._arms[k]
+        else:
+            raise KeyError(
+                f"'{k}' is not a valid index to subscript an arm for 'LinearArms'"
             )
 
     def select_default_arm(self):
