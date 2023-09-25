@@ -322,7 +322,7 @@ class DatasetEnv(BanditEnvBase):  # pragma: no cover
         """Get the reward for agent `agent_id` and arm `arm_id`."""
         filter_entry = (self.data.agent_id == agent_id) & (self.data.arm_id == arm_id)
         if not self.data[filter_entry].empty:
-            return float(self.data[filter_entry].reward)
+            return float(self.data[filter_entry].reward.item())
         else:
             raise ValueError(
                 f"DataFrame does not have reward for 'agent' = "

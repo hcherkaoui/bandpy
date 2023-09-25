@@ -96,6 +96,8 @@ class BanditEnvBase:
             "seed": self.seed,
         }
 
+        info = {name_agent: info}
+
         self.t += 1
 
         done = self.T < self.t
