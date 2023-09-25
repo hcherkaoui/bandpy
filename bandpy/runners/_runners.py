@@ -5,13 +5,13 @@
 import copy
 from joblib import Parallel, delayed
 
-from ..controllers._controllers import ControllerBase, SingleAgentController, DynUCB
+from ..controllers._controllers import SingleAgentController
+from ..agents._base import MultiLinearAgentsBase, SingleMABAgentBase
 
 
-valid_controllers_class = (
-    ControllerBase,  # base class
-    SingleAgentController,  # proxy class
-    DynUCB,  # SOTA class
+valid_agents_class = (
+    MultiLinearAgentsBase,  # linear agent
+    SingleMABAgentBase,  # vanilla agent
 )
 
 
@@ -36,7 +36,7 @@ def run_one_trial(env, agent_or_controller, early_stopping=False, seed=None):
     env : env-class, environment class for later inspection.
     """
     # ensure to have a controller (as a proxy at least)
-    if not issubclass(type(agent_or_controller), valid_controllers_class):
+    if issubclass(type(agent_or_controller), valid_agents_class):
         controller = SingleAgentController(agent_or_controller)
     else:
         controller = agent_or_controller
@@ -46,12 +46,12 @@ def run_one_trial(env, agent_or_controller, early_stopping=False, seed=None):
 
     # trigger first observations
     action = controller.default_act()
-    observation, reward, _, _ = env.step(action)
+    observation, reward, _, info = env.step(action)
 
     while True:
         # controller/environment interaction
-        action = controller.act(observation, reward)
-        observation, reward, done, _ = env.step(action)
+        action = controller.act(observation, reward, info)
+        observation, reward, done, info = env.step(action)
 
         # controller early-stopping
         if early_stopping and controller.done:
@@ -64,9 +64,7 @@ def run_one_trial(env, agent_or_controller, early_stopping=False, seed=None):
     return controller, env
 
 
-def run_trials(
-    env, agent_or_controller, early_stopping=False, seeds=None, n_jobs=1, verbose=True
-):
+def run_trials(env, agent_or_controller, early_stopping=False, seeds=None, n_jobs=1, verbose=True):  # noqa
     """Run in parallel 'run_one_trial' with the given parameters.
 
     Parameters
