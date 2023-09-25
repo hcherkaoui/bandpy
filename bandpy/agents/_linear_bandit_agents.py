@@ -6,7 +6,7 @@ import numpy as np
 from scipy import optimize
 
 from ._base import MultiLinearAgentsBase
-from .._criterions import _f_ucb, f_neg_ucb, grad_neg_ucb
+from .._criterions import f_neg_ucb, grad_neg_ucb
 from .._arms import LinearArms, QuadraticArms, arm_to_quadratic_arm
 from .._compils import sherman_morrison
 from .._checks import check_A_init
@@ -270,18 +270,25 @@ class EOptimalDesign(MultiLinearAgentsBase):  # TODO need maintenance
         return self.rng.choice(np.arange(self.arms.K), p=self.p)
 
 
-class GreedyLinGapE(MultiLinearAgentsBase):  # TODO need maintenance
+class GreedyLinGapE(MultiLinearAgentsBase):
     """Linear Gap-based Exploration class to define the LinGapE algorithm.
 
     Parameters
     ----------
     arms : list of np.array, list of arms.
-    alpha: float, confidence probability parameter
+    epsilon: float, relaxaction parameter for the BAI objective.
+    delta: float, probabilistic control parameter for the BAI objective.
+    R: float, subgaussianity parameter of the noise.
+    S: float, upper-bound of the bandit parameter norm.
+    lbda: float, Ridge regularization parameter.
+    Te: int, forced uniform exploration period to initialize the algorithm.
     seed : None, int, random-instance, (default=None), random-instance
         or random-seed used to initialize the random-instance
     """
 
-    def __init__(self, arms, epsilon, delta, R, S, lbda, seed=None):
+    def __init__(
+        self, arms, epsilon, delta, R, S, Te=None, lbda=1.0, A_init=None, seed=None
+    ):
         """Init."""
 
         if not (epsilon >= 0.0):
@@ -290,17 +297,18 @@ class GreedyLinGapE(MultiLinearAgentsBase):  # TODO need maintenance
         if not ((delta > 0.0) and (delta < 1.0)):
             raise ValueError(f"'delta' should belong to ]0, 1[, got {delta}")
 
-        if not (R > 0.0):
+        if not (R >= 0.0):
             raise ValueError(f"'R' should be positive, got {R}")
 
         if not (S > 0.0):
-            raise ValueError(f"'S' should be positive, got {S}")
+            raise ValueError(f"'S' should be strictly positive, got {S}")
 
-        if not (lbda > 0.0):
-            raise ValueError(f"'lambda' should be positive, got {lbda}")
+        if not (lbda >= 0.0):
+            raise ValueError(f"'lambda' should be positive, got {R}")
 
         self.done = False
-        self.estimated_best_arm = None
+        self.t = 0
+        self.best_arm_hat = -1
 
         self.epsilon = epsilon
         self.delta = delta
@@ -308,7 +316,20 @@ class GreedyLinGapE(MultiLinearAgentsBase):  # TODO need maintenance
         self.S = S
         self.lbda = lbda
 
-        super().__init__(arms=arms, seed=seed)
+        d = len(arms[0])
+        A_init = check_A_init(d, lbda, A_init)
+
+        self.K = len(arms)
+
+        if Te is None:
+            Te = self.K
+        self.Te = Te
+
+        super().__init__(arms=arms, A_init=A_init, lbda=lbda, seed=seed)
+
+        self.det_A_init = np.linalg.det(self.A_init)
+        self.Ca = np.sqrt(self.lbda) * self.S
+        self.Cb = 2.0 * np.log(1.0 / self.delta)
 
     def update_local(self, last_k_or_arm, last_r):
         """Update local variables."""
@@ -320,33 +341,41 @@ class GreedyLinGapE(MultiLinearAgentsBase):  # TODO need maintenance
 
     def act(self, t):
         """Select an arm."""
-        # update main statistic variables
-        C = np.sqrt(np.linalg.det(self.A))
-        C /= self.delta * self.lbda ** (self.d / 2.0)
-        C = np.sqrt(2 * np.log(C))
-        C = float(C * self.R + np.sqrt(self.lbda) * self.S)
 
-        # best arm
+        # force exploration period
+        if t < self.Te:
+            self.t += 1
+            k = t % self.K
+            return k
+
+        # update the best-arm exploration ratio
+        C = self.Ca + self.R * np.sqrt(
+            self.Cb + 2.0 * np.log(self.det_A_local / self.det_A_init)
+        )
+
+        # current best arm
         ii = []
         for x_k in self.arms:
             x_k = x_k.reshape((self.d, 1))
-            r_k = x_k.T.dot(self.theta_hat)
-            ii.append(float(r_k))
+            ii.append(float(x_k.T.dot(self.theta_hat_local)))
         i = np.argmax(ii)
         x_i = self.arms[i].reshape((self.d, 1))
 
-        # best and most optimist arm
+        # current most optimist arm
         jj = []
         for x_k in self.arms:
             x_k = x_k.reshape((self.d, 1))
-            jj.append(_f_ucb(x_k - x_i, C, self.theta_hat, self.inv_A_local))
+            gap_ki = x_k - x_i
+            beta = C * float(np.sqrt(gap_ki.T.dot(self.inv_A_local).dot(gap_ki)))
+            delta = float(self.theta_hat_local.T.dot(gap_ki))
+            jj.append(delta + beta)
         j = np.argmax(jj)
         x_j = self.arms[j].reshape((self.d, 1))
         B = np.max(jj)
 
         # early-stopping
         if B <= self.epsilon:
-            self.done = True  # best arm identified
+            self.done = True
             self.best_arm_hat = i
 
         # greedy arm selection
@@ -357,6 +386,13 @@ class GreedyLinGapE(MultiLinearAgentsBase):  # TODO need maintenance
             gap_ij = x_i - x_j
             a = np.sqrt(gap_ij.T.dot(inv_A_x_k).dot(gap_ij))
             aa.append(float(a))
-        k = np.argmax(aa)
+        k = np.argmin(aa)
+
+        self.t += 1
 
         return k
+
+    @property
+    def best_arm(self):
+        """Return the estimated best arm."""
+        return self.best_arm_hat

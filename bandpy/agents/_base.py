@@ -36,11 +36,11 @@ class MultiLinearAgentsBase:
         self.d = self.arms.d
 
         self.A_init = check_A_init(self.d, self.lbda, A_init)
-        b_init = np.zeros((self.d, 1))
+        self.b_init = np.zeros((self.d, 1))
 
         # shared variables
         self.A = np.copy(self.A_init)
-        self.b = np.copy(b_init)
+        self.b = np.copy(self.b_init)
         self.inv_A = np.linalg.inv(self.A)
         self.chol_A = np.linalg.cholesky(self.A)
         self.det_A = np.linalg.det(self.A)
@@ -48,7 +48,7 @@ class MultiLinearAgentsBase:
 
         # local variables
         self.A_local = np.copy(self.A_init)
-        self.b_local = np.copy(b_init)
+        self.b_local = np.copy(self.b_init)
         self.inv_A_local = np.linalg.inv(self.A_local)
         self.chol_A_local = np.linalg.cholesky(self.A_local)
         self.det_A_local = np.linalg.det(self.A_local)
