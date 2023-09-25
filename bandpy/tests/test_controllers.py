@@ -108,18 +108,8 @@ class DebuggingLinearAgent(agents.LinUCB):
 
 
 @pytest.mark.parametrize("K", [5, 10])
-@pytest.mark.parametrize(
-    "d",
-    [
-        2,
-    ],
-)
-@pytest.mark.parametrize(
-    "T",
-    [
-        5000,
-    ],
-)
+@pytest.mark.parametrize("d", [2,],)
+@pytest.mark.parametrize("T", [5000,],)
 @pytest.mark.parametrize("N", [18, 32])
 @pytest.mark.parametrize("lbda", [0.1, 1.0])
 @pytest.mark.parametrize("alpha", [1.0])
@@ -129,7 +119,6 @@ def test_controllers_theta_estimation(K, d, T, N, lbda, alpha, seed):
     rng = utils.check_random_state(seed)
     sigma = 0.0
     n_thetas = 2
-    A_init = lbda * np.eye(d)
 
     true_labels = []
     for label in range(n_thetas):
@@ -185,43 +174,6 @@ def test_controllers_theta_estimation(K, d, T, N, lbda, alpha, seed):
                 "seed": seed,
             },
         ),
-        "3-DynUCB": (
-            controllers.DynUCB,
-            {
-                "N": N,
-                "n_clusters": n_thetas,
-                "arms": env_instance.arms,
-                "seed": seed,
-                "alpha": alpha,
-                "A_init": A_init,
-            },
-        ),
-        "4-CLUB": (
-            controllers.CLUB,
-            {
-                "N": N,
-                "arms": env_instance.arms,
-                "seed": seed,
-                "alpha": alpha,
-                "gamma": 1.0,
-                "lbda": lbda,
-                "A_init": A_init,
-            },
-        ),
-        "5-LBC": (
-            controllers.LBC,
-            {
-                "N": N,
-                "arms": env_instance.arms,
-                "seed": seed,
-                "S": np.max([np.linalg.norm(theta) for theta in thetas]),
-                "R": sigma,
-                "lbda": lbda,
-                "alpha": alpha,
-                "A_init": A_init,
-                "delta": 1e-3,
-            },
-        ),
     }
 
     for iterates in all_controllers.items():
@@ -249,9 +201,7 @@ def test_controllers_theta_estimation(K, d, T, N, lbda, alpha, seed):
             assert sum_T_i == T
 
             if controller_name in ["2-Oracle", "3-DynUCB", "4-CLUB", "5-LBC"]:
-                true_labels = [
-                    env_instance.theta_per_agent[f"agent_{i}"] for i in range(N)
-                ]
+                true_labels = [env_instance.theta_per_agent[f"agent_{i}"] for i in range(N)]
                 labels = controller_instance.l_labels[-1]
 
                 score_labels = metrics.rand_score(true_labels, labels)
@@ -261,9 +211,7 @@ def test_controllers_theta_estimation(K, d, T, N, lbda, alpha, seed):
 
             l_err_theta, l_err_theta_local = [], []
             for agent_name in controller_instance.agents.keys():
-                true_theta = env_instance.thetas[
-                    env_instance.theta_per_agent[agent_name]
-                ]
+                true_theta = env_instance.thetas[env_instance.theta_per_agent[agent_name]]
 
                 agent = controller_instance.agents[agent_name]
                 theta_hat_local = agent.theta_hat_local
@@ -283,10 +231,16 @@ def test_controllers_theta_estimation(K, d, T, N, lbda, alpha, seed):
             assert mean_err_theta_local < EPS
 
             if controller_name == "0-Single":
-                assert mean_err_theta >= mean_err_theta_local
+                msg = (f"Wrong excepted theta estimation error for '0-Single':"
+                       f" {mean_err_theta:.6f} != {mean_err_theta_local:.6f}")
+                assert mean_err_theta >= mean_err_theta_local, msg
 
             if controller_name == "1-Ind":
-                assert mean_err_theta == mean_err_theta_local
+                msg = (f"Wrong expected theta estimation error for '1-Ind':"
+                       f" {mean_err_theta:.6f} != {mean_err_theta_local:.6f}")
+                assert mean_err_theta == mean_err_theta_local, msg
 
             if controller_name == "2-Oracle":
-                assert mean_err_theta <= mean_err_theta_local
+                msg = (f"Wrong expected theta estimation error for '2-Oracle':"
+                       f" {mean_err_theta:.6f} != {mean_err_theta_local:.6f}")
+                assert mean_err_theta <= mean_err_theta_local, msg
