@@ -2,6 +2,7 @@
 
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
+import itertools
 import numpy as np
 import networkx as nx
 
@@ -19,17 +20,14 @@ class SingleAgentController:
         """Init."""
         self.agents = {"agent_0": agent_instance}
 
-    def choose_agent(self):
-        return "agent_0"
-
     @property
-    def best_arms(self):
+    def best_arm(self):
         return {"agent_0": self.agents["agent_0"].best_arm}
 
     def default_act(self):
         return {"agent_0": self.agents["agent_0"].select_default_arm()}
 
-    def act(self, observation, reward):
+    def act(self, observation, reward, info):
         """Make a chosen agent choose an arm."""
         msg = "'.act()' should manage only one agent at a time"
         assert len(observation) == 1, msg
@@ -54,165 +52,31 @@ class ClusteringController(ControllerBase):
     multi-agents.
     """
 
-    def archive_labels(self):
+    def _archive_labels(self):
         """Archive the current agent labels within self.l_labels."""
         self.l_labels.append(
             [self.agent_labels[agent_name] for agent_name in self.agent_names]
         )
 
-    def check_if_controller_done(self):
+    def _check_if_controller_done(self):
         """Check if the controller return 'done'."""
-        dones = [agent.done for agent in self.agents.values() if hasattr(agent, "done")]
+        dones = [agent.done for agent in self.agents.values() if hasattr(agent, "done")]  # noqa
         self.done = (len(dones) != 0) & all(dones)
 
-    def check_observation_reward(self, observation, reward):
+    def _check_observation_reward(self, observation, reward):
         """check that the environment feedback concerns only the last agent."""
         msg = "'.act()' should manage only one agent at a time"
         assert len(observation) == 1, msg
         assert len(reward) == 1, msg
         return observation, reward
 
-    def cluster_agents(self, t, i):
+    def _cluster_agents(self, t, i):
         """Cluster all the agents from their estimated theta."""
         raise NotImplementedError
 
-    def act(self, observation, reward):
+    def act(self, observation, reward, info):
         """Make each agent choose an arm in a clustered way."""
-        self.check_observation_reward(observation, reward)
-
-        last_agent_name = next(iter(observation.keys()))
-        last_agent_i = int(last_agent_name.split("_")[1])
-
-        last_k_or_arm = observation[last_agent_name]["last_arm_pulled"]
-        last_r = observation[last_agent_name]["last_reward"]
-        t = observation[last_agent_name]["t"]
-
-        self.agents[last_agent_name].update_local(last_k_or_arm, last_r)
-
-        self.cluster_agents(t, last_agent_i)
-
-        self.archive_labels()
-
-        last_agent_new_label = self.agent_labels[last_agent_name]
-
-        for agent_name, label in self.agent_labels.items():
-            if label == last_agent_new_label:
-                self.agents[agent_name].update_shared(last_k_or_arm, last_r)
-
-        agent_name = self.choose_agent()
-        selected_k_or_arm = self.agents[agent_name].act(t)
-
-        self.check_if_controller_done()
-
-        return {agent_name: selected_k_or_arm}
-
-
-class SingleCluster(ClusteringController):
-    """SingleCluster class to define a clustered multi-agents with a single
-    cluster."""
-
-    def __init__(self, agent_cls, agent_kwargs, N=None, agent_names=None, seed=None):
-        """Init."""
-        N, agent_names = check_N_and_agent_names(N, agent_names)
-        self.agent_labels = dict(zip([f"agent_{i}" for i in range(N)], [0] * N))
-        self.l_labels = [list(np.zeros(N))]
-
-        super().__init__(
-            N=N,
-            agent_cls=agent_cls,
-            agent_kwargs=agent_kwargs,
-            agent_names=agent_names,
-            seed=seed,
-        )
-
-    def cluster_agents(self, t, i):
-        """Cluster all the agents from their estimated theta."""
-        pass
-
-
-class Decentralized(ClusteringController):
-    """Decentralized class to define a clustered multi-agents with a no
-    cluster."""
-
-    def __init__(self, agent_cls, agent_kwargs, N=None, agent_names=None, seed=None):
-        """Init."""
-        N, agent_names = check_N_and_agent_names(N, agent_names)
-        self.agent_labels = dict(zip([f"agent_{i}" for i in range(N)], list(range(N))))
-        self.l_labels = [list(np.arange(N))]
-
-        super().__init__(
-            N=N,
-            agent_cls=agent_cls,
-            agent_kwargs=agent_kwargs,
-            agent_names=agent_names,
-            seed=seed,
-        )
-
-    def cluster_agents(self, t, i):
-        """Cluster all the agents from their estimated theta."""
-        pass
-
-
-class OracleClustering(ClusteringController):
-    """OracleClustering class to define a clustered multi-agents with true
-    label."""
-
-    def __init__(
-        self, agent_labels, agent_cls, agent_kwargs, N=None, agent_names=None, seed=None
-    ):
-        """Init."""
-        N, agent_names = check_N_and_agent_names(N, agent_names)
-        self.agent_labels = agent_labels
-        self.l_labels = [[self.agent_labels[agent_name] for agent_name in agent_names]]
-
-        super().__init__(
-            N=N,
-            agent_cls=agent_cls,
-            agent_kwargs=agent_kwargs,
-            agent_names=agent_names,
-            seed=seed,
-        )
-
-    def cluster_agents(self, t, i):
-        """Cluster all the agents from their estimated theta."""
-        pass
-
-
-class AbstractCLUB(ClusteringController):
-    """AbstractCLUB class to define a general CLUB controller to derive the
-    other graph-like controllers."""
-
-    def pull_arm_ucb(self, t, inv_A, theta):
-        """Return the best arm to pull following the UCB criterion."""
-        uu = []
-        for x_k in self.arms:
-            uu.append(_f_ucb(self.alpha, t, x_k.ravel(), theta.ravel(), inv_A))
-        return np.argmax(uu)
-
-    def get_cluster_shared_parameters(self, cluster_idx):
-        """Get the parameters of 'cluster_idx'."""
-        A = np.copy(self.A_init)
-        b = np.zeros((self.d, 1))
-        for i in self.comps[cluster_idx]:
-            A += self.agents[f"agent_{i}"].A_local - self.A_init
-            b += self.agents[f"agent_{i}"].b_local
-        inv_A = np.linalg.inv(A)
-        theta = inv_A.dot(b)
-        return A, b, inv_A, theta
-
-    def update_shared_parameters(self, cluster_idx, A, b, inv_A, theta):
-        """Update parameter for cluster 'cluster_idx'."""
-        for i in self.comps[cluster_idx]:
-            self.agents[f"agent_{i}"].A = np.copy(A)
-            self.agents[f"agent_{i}"].b = np.copy(b)
-            self.agents[f"agent_{i}"].inv_A = np.copy(inv_A)
-            self.agents[f"agent_{i}"].chol_A = None
-            self.agents[f"agent_{i}"].det_A = None
-            self.agents[f"agent_{i}"].theta_hat = np.copy(theta)
-
-    def act(self, observation, reward):
-        """Make each agent choose an arm in a clustered way."""
-        observation, reward = self.check_observation_reward(observation, reward)
+        self._check_observation_reward(observation, reward)
 
         last_agent_name = next(iter(observation.keys()))
         last_agent_i = int(last_agent_name.split("_")[1])
@@ -223,17 +87,149 @@ class AbstractCLUB(ClusteringController):
 
         self.agents[last_agent_name]._update_local(last_k_or_arm, last_r)
 
-        self.update_clusters(t, last_agent_i)
-        self.archive_labels()
+        self._cluster_agents(t, last_agent_i)
 
-        agent_name = self.choose_agent()
+        self._archive_labels()
+
+        last_agent_new_label = self.agent_labels[last_agent_name]
+
+        for agent_name, label in self.agent_labels.items():
+            if label == last_agent_new_label:
+                self.agents[agent_name]._update_shared(last_k_or_arm, last_r)
+
+        agent_name = self._choose_agent()
+        selected_k_or_arm = self.agents[agent_name].act(t)
+
+        self._check_if_controller_done()
+
+        return {agent_name: selected_k_or_arm}
+
+
+class SingleCluster(ClusteringController):
+    """SingleCluster class to define a clustered multi-agents with a single
+    cluster."""
+
+    def __init__(self, agent_cls, agent_kwargs, N=None, agent_names=None, seed=None):  # noqa
+        """Init."""
+        N, agent_names = check_N_and_agent_names(N, agent_names)
+        self.agent_labels = {f"agent_{i}": 0 for i in range(N)}
+        self.l_labels = [list(np.zeros(N))]
+
+        super().__init__(
+            N=N,
+            agent_cls=agent_cls,
+            agent_kwargs=agent_kwargs,
+            agent_names=agent_names,
+            seed=seed,
+        )
+
+    def _cluster_agents(self, t, i):
+        """Cluster all the agents from their estimated theta."""
+        pass
+
+
+class Decentralized(ClusteringController):
+    """Decentralized class to define a clustered multi-agents with a no
+    cluster."""
+
+    def __init__(self, agent_cls, agent_kwargs, N=None, agent_names=None, seed=None):  # noqa
+        """Init."""
+        N, agent_names = check_N_and_agent_names(N, agent_names)
+        self.agent_labels = {f"agent_{i}": i for i in range(N)}
+        self.l_labels = [list(np.arange(N))]
+
+        super().__init__(
+            N=N,
+            agent_cls=agent_cls,
+            agent_kwargs=agent_kwargs,
+            agent_names=agent_names,
+            seed=seed,
+        )
+
+    def _cluster_agents(self, t, i):
+        """Cluster all the agents from their estimated theta."""
+        pass
+
+
+class OracleClustering(ClusteringController):
+    """OracleClustering class to define a clustered multi-agents with true
+    label."""
+
+    def __init__(self, agent_labels, agent_cls, agent_kwargs, N=None, agent_names=None, seed=None):  # noqa
+        """Init."""
+        N, agent_names = check_N_and_agent_names(N, agent_names)
+        self.agent_labels = agent_labels
+        self.l_labels = [[self.agent_labels[agent_name] for agent_name in agent_names]]  # noqa
+
+        super().__init__(
+            N=N,
+            agent_cls=agent_cls,
+            agent_kwargs=agent_kwargs,
+            agent_names=agent_names,
+            seed=seed,
+        )
+
+    def _cluster_agents(self, t, i):
+        """Cluster all the agents from their estimated theta."""
+        pass
+
+
+class AbstractCLUB(ClusteringController):
+    """AbstractCLUB class to define a general CLUB controller to derive the
+    other graph-like controllers."""
+
+    def _pull_arm_ucb(self, t, inv_A, theta):
+        """Return the best arm to pull following the UCB criterion."""
+        uu = []
+        for x_k in self.arms:
+            uu.append(_f_ucb(self.alpha, t, x_k.ravel(), theta.ravel(), inv_A))
+        return np.argmax(uu)
+
+    def _get_cluster_shared_parameters(self, cluster_idx):
+        """Get the parameters of 'cluster_idx'."""
+        A = np.copy(self.A_init)
+        b = np.zeros((self.d, 1))
+        for i in self.comps[cluster_idx]:
+            A += self.agents[f"agent_{i}"].A_local - self.A_init
+            b += self.agents[f"agent_{i}"].b_local
+        inv_A = np.linalg.inv(A)
+        theta = inv_A.dot(b)
+        return A, b, inv_A, theta
+
+    def _update_shared_parameters(self, cluster_idx, A, b, inv_A, theta):
+        """Update parameter for cluster 'cluster_idx'."""
+        for i in self.comps[cluster_idx]:
+            self.agents[f"agent_{i}"].A = np.copy(A)
+            self.agents[f"agent_{i}"].b = np.copy(b)
+            self.agents[f"agent_{i}"].inv_A = np.copy(inv_A)
+            self.agents[f"agent_{i}"].chol_A = None
+            self.agents[f"agent_{i}"].det_A = None
+            self.agents[f"agent_{i}"].theta_hat = np.copy(theta)
+
+    def act(self, observation, reward, info):
+        """Make each agent choose an arm in a clustered way."""
+        observation, reward = self._check_observation_reward(observation, reward)  # noqa
+
+        last_agent_name = next(iter(observation.keys()))
+        last_agent_i = int(last_agent_name.split("_")[1])
+
+        last_k_or_arm = observation[last_agent_name]["last_arm_pulled"]
+        last_r = observation[last_agent_name]["last_reward"]
+        t = observation[last_agent_name]["t"]
+
+        self.agents[last_agent_name]._update_local(last_k_or_arm, last_r)
+
+        self._update_clusters(t, last_agent_i)
+        self._archive_labels()
+
+        agent_name = self._choose_agent()
 
         cluster_idx = self.agent_labels[agent_name]
-        A, b, inv_A, theta = self.get_cluster_shared_parameters(cluster_idx)
-        self.update_shared_parameters(cluster_idx, A, b, inv_A, theta)
-        k = self.pull_arm_ucb(t, inv_A, theta)
+        A, b, inv_A, theta = self._get_cluster_shared_parameters(cluster_idx)
+        self._update_shared_parameters(cluster_idx, A, b, inv_A, theta)
+        k = self._pull_arm_ucb(t, inv_A, theta)
 
-        self.check_if_controller_done()
+        self._check_if_controller_done()
 
         return {agent_name: k}
 
@@ -265,7 +261,7 @@ class CLUB(AbstractCLUB):
         self.gamma = gamma
 
         # super init
-        agent_kwargs = dict(arms=arms, A_init=self.A_init, lbda=lbda, seed=seed)
+        agent_kwargs = dict(arms=arms, A_init=self.A_init, lbda=lbda, seed=seed)  # noqa
         super().__init__(
             N=N,
             agent_cls=MultiLinearAgentsBase,
@@ -276,17 +272,18 @@ class CLUB(AbstractCLUB):
 
         # graph related parameters
         self.graph_G = nx.from_numpy_array(np.ones((self.N, self.N)))
-        self.agent_labels = dict(zip([f"agent_{i}" for i in range(N)], [0] * N))
+        self.agent_labels = {f"agent_{i}": 0 for i in range(N)}
         self.comps = [set(range(N))]
         self.l_labels = [list(np.zeros(N))]
 
-    def update_clusters(self, t, i):
+    def _update_clusters(self, t, i):
         """Update raw/col i-th of the similarity graph G."""
+        update_clusters = False
         cb_i = np.sqrt((1.0 + np.log(1.0 + self.T_i[i])) / (1.0 + self.T_i[i]))
         theta_i = self.agents[self.agent_names[i]].theta_hat_local
 
         for j in set(self.graph_G.neighbors(i)) - set([i]):
-            cb_j = np.sqrt((1.0 + np.log(1.0 + self.T_i[j])) / (1.0 + self.T_i[j]))
+            cb_j = np.sqrt((1.0 + np.log(1.0 + self.T_i[j])) / (1.0 + self.T_i[j]))  # noqa
             ub = self.gamma * (cb_i + cb_j)
 
             theta_j = self.agents[self.agent_names[j]].theta_hat_local
@@ -295,12 +292,14 @@ class CLUB(AbstractCLUB):
 
             if norm_diff_thetas > ub:
                 self.graph_G.remove_edge(i, j)
+                update_clusters = True
 
-        self.comps = list(nx.connected_components(self.graph_G))
+        if update_clusters:
+            self.comps = list(nx.connected_components(self.graph_G))
 
-        for label, comp in enumerate(self.comps):
-            for i in comp:
-                self.agent_labels[self.agent_names[i]] = label
+            for label, comp in enumerate(self.comps):
+                for i in comp:
+                    self.agent_labels[self.agent_names[i]] = label
 
 
 class LBC(AbstractCLUB):
@@ -338,7 +337,7 @@ class LBC(AbstractCLUB):
         self.b = 2.0 * np.log(1.0 / self.delta)
 
         # super init
-        agent_kwargs = dict(arms=arms, A_init=self.A_init, lbda=lbda, seed=seed)
+        agent_kwargs = dict(arms=arms, A_init=self.A_init, lbda=lbda, seed=seed)  # noqa
         super().__init__(
             N=N,
             agent_cls=MultiLinearAgentsBase,
@@ -349,12 +348,13 @@ class LBC(AbstractCLUB):
 
         # graph related parameters
         self.graph_G = nx.from_numpy_array(np.ones((self.N, self.N)))
-        self.agent_labels = dict(zip([f"agent_{i}" for i in range(N)], [0] * N))
+        self.agent_labels = {f"agent_{i}": 0 for i in range(N)}
         self.comps = [set(range(N))]
         self.l_labels = [list(np.zeros(N))]
 
-    def update_clusters(self, t, i):
+    def _update_clusters(self, t, i):
         """Update raw/col i-th of the similarity graph G."""
+        update_clusters = False
         agent_i = self.agents[self.agent_names[i]]
         eps_i = self.a + self.R * np.sqrt(
             self.b + np.log(agent_i.det_A_local / self.det_A_init)
@@ -370,20 +370,20 @@ class LBC(AbstractCLUB):
             cho_A_j = agent_j.chol_A_local / np.sqrt(eps_j)
             theta_j = agent_j.theta_hat_local
 
-            _, min_K = K_min(
-                inv_A_i=inv_A_i, cho_A_j=cho_A_j, theta_i=theta_i, theta_j=theta_j
-            )
+            _, min_K = K_min(inv_A_i=inv_A_i, cho_A_j=cho_A_j, theta_i=theta_i, theta_j=theta_j)  # noqa
 
             if min_K < 0.0:
                 self.graph_G.remove_edge(i, j)
+                update_clusters = True
 
-        self.comps = list(nx.connected_components(self.graph_G))
+        if update_clusters:
+            self.comps = list(nx.connected_components(self.graph_G))
 
-        for label, comp in enumerate(self.comps):
-            for i in comp:
-                self.agent_labels[self.agent_names[i]] = label
+            for label, comp in enumerate(self.comps):
+                for i in comp:
+                    self.agent_labels[self.agent_names[i]] = label
 
-    def get_neighbors_shared_parameters(self, agent_name):
+    def _get_neighbors_shared_parameters(self, agent_name):
         """Get the parameters of 'cluster_idx'."""
         i = int(agent_name.split("_")[1])
         A = np.copy(self.A_init)
@@ -395,9 +395,9 @@ class LBC(AbstractCLUB):
         theta = inv_A.dot(b)
         return A, b, inv_A, theta
 
-    def act(self, observation, reward):
+    def act(self, observation, reward, info):
         """Make each agent choose an arm in a clustered way."""
-        observation, reward = self.check_observation_reward(observation, reward)  # noqa
+        observation, reward = self._check_observation_reward(observation, reward)  # noqa
 
         last_agent_name = next(iter(observation.keys()))
         last_agent_i = int(last_agent_name.split("_")[1])
@@ -408,15 +408,15 @@ class LBC(AbstractCLUB):
 
         self.agents[last_agent_name]._update_local(last_k_or_arm, last_r)
 
-        self.update_clusters(t, last_agent_i)
-        self.archive_labels()
+        self._update_clusters(t, last_agent_i)
+        self._archive_labels()
 
-        agent_name = self.choose_agent()
+        agent_name = self._choose_agent()
 
-        _, _, inv_A, theta = self.get_neighbors_shared_parameters(agent_name)
-        k = self.pull_arm_ucb(t, inv_A, theta)
+        _, _, inv_A, theta = self._get_neighbors_shared_parameters(agent_name)
+        k = self._pull_arm_ucb(t, inv_A, theta)
 
-        self.check_if_controller_done()
+        self._check_if_controller_done()
 
         return {agent_name: k}
 
@@ -425,7 +425,17 @@ class DynUCB:
     """Dynamic UCB as defined in ```Dynamic Clustering of Contextual
     Multi-Armed Bandits```."""
 
-    def __init__(self, N, alpha, n_clusters, arms, A_init=None, lbda=1.0, seed=None):
+    def __init__(
+        self,
+        N,
+        alpha,
+        n_clusters,
+        arms,
+        A_init=None,
+        lbda=1.0,
+        agent_selection_type="random",
+        seed=None,
+    ):
         """Init."""
         # ucb parameter
         self.alpha = alpha
@@ -441,7 +451,7 @@ class DynUCB:
         # random varaible
         self.rng = check_random_state(seed)
 
-        agent_kwargs = dict(arms=self.arms, A_init=self.A_init, lbda=lbda, seed=seed)
+        agent_kwargs = dict(arms=self.arms, A_init=self.A_init, lbda=lbda, seed=seed)  # noqa
 
         # init agents
         self.N = N
@@ -460,11 +470,13 @@ class DynUCB:
         self.cluster_thetas = dict()
         self.cluster_inv_A = dict()
         for cluster_idx in range(self.n_clusters):
-            _, _, inv_A, theta = self.get_cluster_shared_parameters(cluster_idx)
+            _, _, inv_A, theta = self._get_cluster_shared_parameters(cluster_idx)  # noqa
             self.cluster_inv_A[cluster_idx] = inv_A
             self.cluster_thetas[cluster_idx] = theta
 
-        self.l_labels = [[self.agent_labels[f"agent_{i}"] for i in range(self.N)]]
+        self.l_labels = [[self.agent_labels[f"agent_{i}"] for i in range(self.N)]]  # noqa
+
+        self.agent_selection_type = agent_selection_type
 
         self.done = False
 
@@ -479,7 +491,7 @@ class DynUCB:
             comps[m] = labels
         return agent_labels, comps
 
-    def get_cluster_shared_parameters(self, cluster_idx):
+    def _get_cluster_shared_parameters(self, cluster_idx):
         """Get the parameters of 'cluster_idx'."""
         A = np.copy(self.A_init)
         b = np.zeros((self.d, 1))
@@ -490,7 +502,7 @@ class DynUCB:
         theta = inv_A.dot(b)
         return A, b, inv_A, theta
 
-    def update_shared_parameters(self, cluster_idx, A, b, inv_A, theta):
+    def _update_shared_parameters(self, cluster_idx, A, b, inv_A, theta):
         """Update parameter for cluster 'cluster_idx'."""
         for i in self.comps[cluster_idx]:
             self.agents[f"agent_{i}"].A = np.copy(A)
@@ -511,44 +523,53 @@ class DynUCB:
     def default_act(self):
         """Choose one agent and makes it pull the 'default' arm to init the
         simulation."""
-        agent_name = self.choose_agent()
+        agent_name = self._choose_agent()
         agent = self.agents[agent_name]
         return {agent_name: agent.select_default_arm()}
 
-    def choose_agent(self):
+    def _choose_agent(self):
         """Randomly return the name of an agent."""
-        i = self.rng.randint(self.N)
+        if self.agent_selection_type == "random":
+            i = self.rng.randint(self.N)
+
+        elif self.agent_selection_type == "iterative":
+            i = self.t % self.N
+
+        else:
+            raise ValueError("Agent selection type not understood, got {self.agent_selection_type}")  # noqa
+
         self.t += 1  # asynchrone case
         self.T_i[i] += 1
+
         return f"agent_{i}"
 
-    def pull_arm_ucb(self, t, inv_A, theta):
+    def _pull_arm_ucb(self, t, inv_A, theta):
         """Return the best arm to pull following the UCB criterion."""
         uu = []
         for x_k in self.arms:
             uu.append(_f_ucb(self.alpha, t, x_k.ravel(), theta.ravel(), inv_A))
         return np.argmax(uu)
 
-    def archive_labels(self):
+    def _archive_labels(self):
         """Archive the current agent labels within self.l_labels."""
         l_labels = [self.agent_labels[f"agent_{i}"] for i in range(self.N)]
         self.l_labels.append(l_labels)
 
-    def check_if_controller_done(self):
+    def _check_if_controller_done(self):
         """Check if the controller return 'done'."""
         dones = [agent.done for agent in self.agents.values() if hasattr(agent, "done")]
         self.done = (len(dones) != 0) & all(dones)
 
-    def check_observation_reward(self, observation, reward):
+    def _check_observation_reward(self, observation, reward):
         """check that the environment feedback concerns only the last agent."""
         msg = "'.act()' should manage only one agent at a time"
         assert len(observation) == 1, msg
         assert len(reward) == 1, msg
         return observation, reward
 
-    def act(self, observation, reward):
+    def act(self, observation, reward, info):
         """Make each agent choose an arm in a decentralized way."""
-        observation, reward = self.check_observation_reward(observation, reward)
+        observation, reward = self._check_observation_reward(observation, reward)
 
         # fetch the name of the agent with the observation
         last_agent_name = next(iter(observation.keys()))
@@ -583,8 +604,8 @@ class DynUCB:
                 b_cluster,
                 inv_A_cluster,
                 theta_cluster,
-            ) = self.get_cluster_shared_parameters(old_agent_label)
-            self.update_shared_parameters(
+            ) = self._get_cluster_shared_parameters(old_agent_label)
+            self._update_shared_parameters(
                 old_agent_label, A_cluster, b_cluster, inv_A_cluster, theta_cluster
             )
             self.cluster_thetas[old_agent_label] = theta_cluster
@@ -597,24 +618,150 @@ class DynUCB:
                 b_cluster,
                 inv_A_cluster,
                 theta_cluster,
-            ) = self.get_cluster_shared_parameters(agent_label)
-            self.update_shared_parameters(
+            ) = self._get_cluster_shared_parameters(agent_label)
+            self._update_shared_parameters(
                 agent_label, A_cluster, b_cluster, inv_A_cluster, theta_cluster
             )
 
             self.cluster_thetas[agent_label] = theta_cluster
             self.cluster_inv_A[agent_label] = inv_A_cluster
 
-        agent_name = self.choose_agent()
+        agent_name = self._choose_agent()
 
         # take the chosen agent cluster variables
         theta_cluster = self.cluster_thetas[self.agent_labels[agent_name]]
         inv_A_cluster = self.cluster_inv_A[self.agent_labels[agent_name]]
 
-        k = self.pull_arm_ucb(t, inv_A_cluster, theta_cluster)
+        k = self._pull_arm_ucb(t, inv_A_cluster, theta_cluster)
 
-        self.archive_labels()
+        self._archive_labels()
 
-        self.check_if_controller_done()
+        self._check_if_controller_done()
+
+        return {agent_name: k}
+
+
+class CMLB(AbstractCLUB):
+    """Clustered Multi-Agents Bandits as defined in ```Multi-Agent Heterogeneous Stochastic Linear
+    Bandits```."""
+
+    def __init__(
+        self,
+        arms,
+        A_init=None,
+        Te=1000,
+        len_cluster_ratio=0.1,
+        gamma=1.0,
+        alpha=1.0,
+        lbda=1.0,
+        N=None,
+        agent_names=None,
+        seed=None,
+    ):
+        """Init."""
+        # general parameters
+        self.arms = arms
+        self.alpha = alpha
+        self.d = len(self.arms[0])
+        self.A_init = check_A_init(self.d, lbda, A_init)
+        N, agent_names = check_N_and_agent_names(N, agent_names)
+
+        # CMLB related parameters
+        self.lbda = lbda
+        self.gamma = gamma
+        self.len_cluster_ratio = len_cluster_ratio
+        self.Te = Te
+
+        # super init
+        agent_kwargs = dict(arms=arms, A_init=self.A_init, lbda=lbda, seed=seed)
+        super().__init__(
+            N=N,
+            agent_cls=MultiLinearAgentsBase,
+            agent_kwargs=agent_kwargs,
+            agent_names=agent_names,
+            seed=seed,
+        )
+
+        # graph related parameters
+        self.graph_G = nx.from_numpy_array(np.zeros((self.N, self.N)))
+        self.agent_labels = {f"agent_{i}": i for i in range(N)}
+        self.comps = [{i} for i in range(N)]
+        self.l_labels = [list(range(N))]
+
+    def _maximal_cluster(self):
+        """Cluster the agents as aggregated connected components."""
+        min_len_cluster = int(self.len_cluster_ratio * self.N)
+
+        # create the agent graph
+        update_clusters = False
+        for i, j in itertools.combinations(range(self.N), 2):
+            theta_i = self.agents[self.agent_names[i]].theta_hat_local
+            theta_j = self.agents[self.agent_names[j]].theta_hat_local
+
+            diff_thetas = (theta_i - theta_j).ravel()
+            norm_diff_thetas = np.sqrt(diff_thetas.dot(diff_thetas))
+
+            if norm_diff_thetas < self.gamma:
+                self.graph_G.add_edge(i, j)
+                update_clusters = True
+
+        if update_clusters:
+            self.comps = list(nx.connected_components(self.graph_G))
+
+            # aggregate the small clusters
+            small_clusters_aggregation, comps = [], []
+            for comp in self.comps:
+                if len(comp) >= min_len_cluster:
+                    comps.append(comp)
+
+                else:
+                    small_clusters_aggregation.append(comp)
+
+            # archive clusters
+            last_comp = set()
+            for c in small_clusters_aggregation:
+                last_comp = last_comp | c
+
+            self.comps = comps if len(last_comp) == 0 else comps + [last_comp]
+
+            for label, comp in enumerate(self.comps):
+                for i in comp:
+                    self.agent_labels[self.agent_names[i]] = label
+
+    def _get_shared_parameters(self, agent_name):
+        """Return the inv_A, theta parameters of the cluster of the given 'agent_name'
+        (which can be of a single agent)"""
+        agent_cluster_label = self.agent_labels[agent_name]
+        A = np.copy(self.A_init)
+        b = np.zeros((self.d, 1))
+        for i in self.comps[agent_cluster_label]:
+            A += self.agents[f"agent_{i}"].A_local - self.A_init
+            b += self.agents[f"agent_{i}"].b_local
+        inv_A = np.linalg.inv(A)
+        theta = inv_A.dot(b)
+        return inv_A, theta
+
+    def act(self, observation, reward, info):
+        """Make each agent choose an arm in a clustered way."""
+        observation, reward = self._check_observation_reward(observation, reward)  # noqa
+
+        last_agent_name = next(iter(observation.keys()))
+
+        last_k_or_arm = observation[last_agent_name]["last_arm_pulled"]
+        last_r = observation[last_agent_name]["last_reward"]
+        t = observation[last_agent_name]["t"]
+
+        self.agents[last_agent_name]._update_local(last_k_or_arm, last_r)
+
+        if self.t == self.Te:
+            self._maximal_cluster()
+
+        self._archive_labels()
+
+        agent_name = self._choose_agent()
+        inv_A, theta = self._get_shared_parameters(agent_name)
+        k = self._pull_arm_ucb(t, inv_A, theta)
+
+        self._check_if_controller_done()
 
         return {agent_name: k}

@@ -13,7 +13,15 @@ class ControllerBase:
     ----------
     """
 
-    def __init__(self, N, agent_cls, agent_kwargs, agent_names=None, seed=None):
+    def __init__(
+        self,
+        N,
+        agent_cls,
+        agent_kwargs,
+        agent_names=None,
+        agent_selection_type="random",
+        seed=None,
+    ):
         """Init."""
         self.agents = dict()
 
@@ -33,13 +41,26 @@ class ControllerBase:
         for agent_name in self.agent_names:
             self.agents[agent_name] = agent_cls(**agent_kwargs)
 
+        self.agent_selection_type = agent_selection_type
+
         self.done = False
 
-    def choose_agent(self):
+    def _choose_agent(self):
         """Randomly return the name of an agent."""
-        i = self.rng.randint(self.N)
+        if self.agent_selection_type == "random":
+            i = self.rng.randint(self.N)
+
+        elif self.agent_selection_type == "iterative":
+            i = self.t % self.N
+
+        else:
+            raise ValueError(
+                "Agent selection type not understood, got {self.agent_selection_type}"
+            )
+
         self.t += 1  # asynchrone case
         self.T_i[i] += 1
+
         return f"agent_{i}"
 
     @property
@@ -57,6 +78,6 @@ class ControllerBase:
     def default_act(self):
         """Choose one agent and makes it pull the 'default' arm to init the
         simulation."""
-        agent_name = self.choose_agent()
+        agent_name = self._choose_agent()
         agent = self.agents[agent_name]
         return {agent_name: agent.select_default_arm()}
