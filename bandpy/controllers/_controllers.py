@@ -2,8 +2,10 @@
 
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
+import warnings
 import itertools
 import numpy as np
+from sklearn import metrics
 import networkx as nx
 
 from ._base import ControllerBase
@@ -11,6 +13,15 @@ from ..agents._linear_bandit_agents import MultiLinearAgentsBase
 from .._compils import K_min
 from .._checks import check_random_state, check_N_and_agent_names, check_A_init
 from .._criterions import _f_ucb
+
+
+def labels_to_A(labels):
+    """Convert the labels to a N x N cluster matrix ."""
+    A = np.zeros((len(labels), len(labels)), dtype=int)
+    for i, j in itertools.combinations(range(len(labels)), 2):
+        if labels[i] == labels[j]:
+                A[i, j]= 1
+    return A
 
 
 class SingleAgentController:
@@ -54,9 +65,25 @@ class ClusteringController(ControllerBase):
 
     def _archive_labels(self):
         """Archive the current agent labels within self.l_labels."""
-        self.l_labels.append(
-            [self.agent_labels[agent_name] for agent_name in self.agent_names]
-        )
+        labels = [self.agent_labels[agent_name] for agent_name in self.agent_names]
+
+        self.l_labels.append(labels)
+
+        if hasattr(self, 'graph_A'):
+            graph_A = self.graph_A
+        else:
+            graph_A = labels_to_A(labels)
+
+        if self.true_graph is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                true_edge_labels = np.triu(self.true_graph, 1).ravel()
+                edge_labels = np.triu(graph_A, 1).ravel()
+                f1_score = metrics.f1_score(true_edge_labels, edge_labels)
+            self.l_graph_A_or_graph_score.append(f1_score)
+        else:
+            self.l_graph_A_or_graph_score.append(graph_A)
+
 
     def _check_if_controller_done(self):
         """Check if the controller return 'done'."""
@@ -109,11 +136,26 @@ class SingleCluster(ClusteringController):
     """SingleCluster class to define a clustered multi-agents with a single
     cluster."""
 
-    def __init__(self, agent_cls, agent_kwargs, N=None, agent_names=None, seed=None):  # noqa
+    def __init__(self,
+                 agent_cls,
+                 agent_kwargs,
+                 N=None,
+                 agent_names=None,
+                 true_graph=None,
+                 seed=None,
+                 ):
         """Init."""
         N, agent_names = check_N_and_agent_names(N, agent_names)
         self.agent_labels = {f"agent_{i}": 0 for i in range(N)}
+
+        # direct compute of the score to reduce memory usage
+        self.true_graph = true_graph if true_graph is not None else None
+
         self.l_labels = [list(np.zeros(N))]
+        if self.true_graph is not None:
+            self.l_graph_A_or_graph_score = [0.0]
+        else:
+            self.l_graph_A_or_graph_score = [labels_to_A(self.l_labels[-1])]
 
         super().__init__(
             N=N,
@@ -132,11 +174,26 @@ class Decentralized(ClusteringController):
     """Decentralized class to define a clustered multi-agents with a no
     cluster."""
 
-    def __init__(self, agent_cls, agent_kwargs, N=None, agent_names=None, seed=None):  # noqa
+    def __init__(self,
+                 agent_cls,
+                 agent_kwargs,
+                 N=None,
+                 agent_names=None,
+                 true_graph=None,
+                 seed=None,
+                 ):
         """Init."""
         N, agent_names = check_N_and_agent_names(N, agent_names)
         self.agent_labels = {f"agent_{i}": i for i in range(N)}
+
+        # direct compute of the score to reduce memory usage
+        self.true_graph = true_graph if true_graph is not None else None
+
         self.l_labels = [list(np.arange(N))]
+        if self.true_graph is not None:
+            self.l_graph_A_or_graph_score = [0.0]
+        else:
+            self.l_graph_A_or_graph_score = [labels_to_A(self.l_labels[-1])]
 
         super().__init__(
             N=N,
@@ -155,11 +212,27 @@ class OracleClustering(ClusteringController):
     """OracleClustering class to define a clustered multi-agents with true
     label."""
 
-    def __init__(self, agent_labels, agent_cls, agent_kwargs, N=None, agent_names=None, seed=None):  # noqa
+    def __init__(self,
+                agent_labels,
+                agent_cls,
+                agent_kwargs,
+                N=None,
+                agent_names=None,
+                true_graph=None,
+                seed=None,
+                ):
         """Init."""
         N, agent_names = check_N_and_agent_names(N, agent_names)
         self.agent_labels = agent_labels
+
+        # direct compute of the score to reduce memory usage
+        self.true_graph = true_graph if true_graph is not None else None
+
         self.l_labels = [[self.agent_labels[agent_name] for agent_name in agent_names]]  # noqa
+        if self.true_graph is not None:
+            self.l_graph_A_or_graph_score = [0.0]
+        else:
+            self.l_graph_A_or_graph_score = [labels_to_A(self.l_labels[-1])]
 
         super().__init__(
             N=N,
@@ -247,6 +320,7 @@ class CLUB(AbstractCLUB):
         lbda=1.0,
         N=None,
         agent_names=None,
+        true_graph=None,
         seed=None,
     ):
         """Init."""
@@ -270,11 +344,19 @@ class CLUB(AbstractCLUB):
             seed=seed,
         )
 
+        # direct compute of the score to reduce memory usage
+        self.true_graph = true_graph if true_graph is not None else None
+
         # graph related parameters
         self.graph_G = nx.from_numpy_array(np.ones((self.N, self.N)))
         self.agent_labels = {f"agent_{i}": 0 for i in range(N)}
         self.comps = [set(range(N))]
         self.l_labels = [list(np.zeros(N))]
+        self.graph_A = nx.adjacency_matrix(self.graph_G).todense()
+        if self.true_graph is not None:
+            self.l_graph_A_or_graph_score = [0.0]
+        else:
+            self.l_graph_A_or_graph_score = [self.graph_A]
 
     def _update_clusters(self, t, i):
         """Update raw/col i-th of the similarity graph G."""
@@ -293,6 +375,8 @@ class CLUB(AbstractCLUB):
             if norm_diff_thetas > ub:
                 self.graph_G.remove_edge(i, j)
                 update_clusters = True
+
+        self.graph_A = nx.adjacency_matrix(self.graph_G).todense()
 
         if update_clusters:
             self.comps = list(nx.connected_components(self.graph_G))
@@ -316,6 +400,7 @@ class LBC(AbstractCLUB):
         lbda=1.0,
         N=None,
         agent_names=None,
+        true_graph=None,
         seed=None,
     ):
         """Init."""
@@ -346,11 +431,19 @@ class LBC(AbstractCLUB):
             seed=seed,
         )
 
+        # direct compute of the score to reduce memory usage
+        self.true_graph = true_graph if true_graph is not None else None
+
         # graph related parameters
         self.graph_G = nx.from_numpy_array(np.ones((self.N, self.N)))
         self.agent_labels = {f"agent_{i}": 0 for i in range(N)}
         self.comps = [set(range(N))]
         self.l_labels = [list(np.zeros(N))]
+        self.graph_A = nx.adjacency_matrix(self.graph_G).todense()
+        if self.true_graph is not None:
+            self.l_graph_A_or_graph_score = [0.0]
+        else:
+            self.l_graph_A_or_graph_score = [self.graph_A]
 
     def _update_clusters(self, t, i):
         """Update raw/col i-th of the similarity graph G."""
@@ -375,6 +468,8 @@ class LBC(AbstractCLUB):
             if min_K < 0.0:
                 self.graph_G.remove_edge(i, j)
                 update_clusters = True
+
+        self.graph_A = nx.adjacency_matrix(self.graph_G).todense()
 
         if update_clusters:
             self.comps = list(nx.connected_components(self.graph_G))
@@ -434,6 +529,7 @@ class DynUCB:
         A_init=None,
         lbda=1.0,
         agent_selection_type="random",
+        true_graph=None,
         seed=None,
     ):
         """Init."""
@@ -444,7 +540,6 @@ class DynUCB:
 
         # clustering parameters
         self.n_clusters = n_clusters
-        self.l_labels = []
 
         self.A_init = check_A_init(self.d, lbda, A_init)
 
@@ -467,6 +562,9 @@ class DynUCB:
         self.agent_labels = agent_labels
         self.comps = comps
 
+        # direct compute of the score to reduce memory usage
+        self.true_graph = true_graph if true_graph is not None else None
+
         self.cluster_thetas = dict()
         self.cluster_inv_A = dict()
         for cluster_idx in range(self.n_clusters):
@@ -474,7 +572,12 @@ class DynUCB:
             self.cluster_inv_A[cluster_idx] = inv_A
             self.cluster_thetas[cluster_idx] = theta
 
-        self.l_labels = [[self.agent_labels[f"agent_{i}"] for i in range(self.N)]]  # noqa
+        labels = [[self.agent_labels[f"agent_{i}"] for i in range(self.N)]]  # noqa
+        self.l_labels = [labels]
+        if self.true_graph is not None:
+            self.l_graph_A_or_graph_score = [0.0]
+        else:
+            self.l_graph_A_or_graph_score = [labels_to_A(self.l_labels[-1])]
 
         self.agent_selection_type = agent_selection_type
 
@@ -552,8 +655,20 @@ class DynUCB:
 
     def _archive_labels(self):
         """Archive the current agent labels within self.l_labels."""
-        l_labels = [self.agent_labels[f"agent_{i}"] for i in range(self.N)]
-        self.l_labels.append(l_labels)
+        labels = [self.agent_labels[f"agent_{i}"] for i in range(self.N)]  # noqa
+        self.l_labels.append(labels)
+
+        graph_A = labels_to_A(labels)
+
+        if self.true_graph is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                true_edge_labels = np.triu(self.true_graph, 1).ravel()
+                edge_labels = np.triu(graph_A, 1).ravel()
+                f1_score = metrics.f1_score(true_edge_labels, edge_labels)
+            self.l_graph_A_or_graph_score.append(f1_score)
+        else:
+            self.l_graph_A_or_graph_score.append(graph_A)
 
     def _check_if_controller_done(self):
         """Check if the controller return 'done'."""
@@ -656,6 +771,7 @@ class CMLB(AbstractCLUB):
         lbda=1.0,
         N=None,
         agent_names=None,
+        true_graph=None,
         seed=None,
     ):
         """Init."""
@@ -682,11 +798,18 @@ class CMLB(AbstractCLUB):
             seed=seed,
         )
 
+        # direct compute of the score to reduce memory usage
+        self.true_graph = true_graph if true_graph is not None else None
+
         # graph related parameters
         self.graph_G = nx.from_numpy_array(np.zeros((self.N, self.N)))
         self.agent_labels = {f"agent_{i}": i for i in range(N)}
         self.comps = [{i} for i in range(N)]
         self.l_labels = [list(range(N))]
+        if self.true_graph is not None:
+            self.l_graph_A_or_graph_score = [0.0]
+        else:
+            self.l_graph_A_or_graph_score = [labels_to_A(self.l_labels[-1])]
 
     def _maximal_cluster(self):
         """Cluster the agents as aggregated connected components."""
