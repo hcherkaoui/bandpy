@@ -320,6 +320,7 @@ class GreedyLinGapE(MultiLinearAgentsBase):
         A_init = check_A_init(d, lbda, A_init)
 
         self.K = len(arms)
+        self.Tk = [0] * len(arms)
 
         if Te is None:
             Te = self.K
@@ -346,12 +347,11 @@ class GreedyLinGapE(MultiLinearAgentsBase):
         if t < self.Te:
             self.t += 1
             k = t % self.K
+            self.Tk[k] += 1
             return k
 
         # update the best-arm exploration ratio
-        C = self.Ca + self.R * np.sqrt(
-            self.Cb + 2.0 * np.log(self.det_A_local / self.det_A_init)
-        )
+        beta = self.Ca + self.R * np.sqrt(self.Cb + 2.0 * np.log(self.det_A_local / self.det_A_init))
 
         # current best arm
         ii = []
@@ -361,17 +361,17 @@ class GreedyLinGapE(MultiLinearAgentsBase):
         i = np.argmax(ii)
         x_i = self.arms[i].reshape((self.d, 1))
 
-        # current most optimist arm
+        # current most ambigious arm
         jj = []
-        for x_k in self.arms:
-            x_k = x_k.reshape((self.d, 1))
-            gap_ki = x_k - x_i
-            beta = C * float(np.sqrt(gap_ki.T.dot(self.inv_A_local).dot(gap_ki)))
-            delta = float(self.theta_hat_local.T.dot(gap_ki))
-            jj.append(delta + beta)
+        for x_j in self.arms:
+            x_j = x_j.reshape((self.d, 1))
+            gap_ji = x_j - x_i
+            gap_uncertainty = beta * float(np.sqrt(gap_ji.T.dot(self.inv_A_local).dot(gap_ji)))
+            estimated_gap_reward = float(self.theta_hat_local.T.dot(gap_ji))
+            jj.append(estimated_gap_reward + gap_uncertainty)
+        B = np.max(jj)
         j = np.argmax(jj)
         x_j = self.arms[j].reshape((self.d, 1))
-        B = np.max(jj)
 
         # early-stopping
         if B <= self.epsilon:
@@ -380,14 +380,14 @@ class GreedyLinGapE(MultiLinearAgentsBase):
 
         # greedy arm selection
         aa = []
+        gap_ji = x_j - x_i
         for x_k in self.arms:
             x_k = x_k.reshape((self.d, 1))
             inv_A_x_k = sherman_morrison(self.inv_A_local, x_k)
-            gap_ij = x_i - x_j
-            a = np.sqrt(gap_ij.T.dot(inv_A_x_k).dot(gap_ij))
+            a = np.sqrt(gap_ji.T.dot(inv_A_x_k).dot(gap_ji))
             aa.append(float(a))
         k = np.argmin(aa)
-
+        self.Tk[k] += 1
         self.t += 1
 
         return k
