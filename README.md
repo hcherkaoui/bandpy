@@ -1,7 +1,6 @@
 <p align="center">
 <a href="https://www.python.org/downloads/release/python-3917/"><img alt="Python Version" src="https://img.shields.io/badge/python-3.9-blue.svg"></a>
-<a href="https://github.com/hcherkaoui/bandpy/commits/master/"><img alt="Pipeline Status" src="https://app.travis-ci.com/hcherkaoui/bandpy.svg?branch=master"></a>
-<a href="https://github.com/hcherkaoui/bandpy/commits/master/"><img alt="Coverage Status" src="https://codecov.io/gh/hcherkaoui/bandpy/branch/master/graph/badge.svg"></a>
+<a href="https://codecov.io/github/hcherkaoui/bandpy" ><img src="https://codecov.io/github/hcherkaoui/bandpy/graph/badge.svg?token=BR13TM28L0"/></a>
 <a href="https://opensource.org/licenses/BSD-3-Clause"><img alt="License: BSD-3" src="https://img.shields.io/badge/License-BSD_3--Clause-blue.svg"></a>
 <a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 </p>
