@@ -1,0 +1,29 @@
+version: 2.1
+orbs:
+  codecov: codecov/codecov@3
+
+jobs:
+  build:
+    docker:
+      - image: cimg/python:3.9
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: pip install -r requirements.txt
+      - run:
+          name: Install package
+          command: pip install -e .
+      - run:
+          name: Install testing tool
+          command: pip install pytest pytest-cov
+      - run:
+          name: Run tests and collect coverage
+          command: pytest --cov bandpy
+      - codecov/upload
+
+workflow:
+  version: 2.1
+  build-test:
+    jobs:
+      - build

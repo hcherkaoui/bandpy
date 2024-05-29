@@ -41,7 +41,7 @@ def _select_arm(
         else:
             grad = None
 
-        x0 = np.zeros_like(theta)
+        x0 = np.zeros_like(theta).ravel()
         bounds = [
             (np.min(entry_vals), np.max(entry_vals))
             for entry_vals in arm_entries.values()
