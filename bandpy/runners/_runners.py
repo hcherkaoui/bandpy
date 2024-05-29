@@ -43,6 +43,7 @@ def run_one_trial(env, agent_or_controller, early_stopping=False, seed=None):
 
     # ensure to reset the environment
     env.reset(seed=seed)
+    controller.reset(seed=seed)
 
     # trigger first observations
     action = controller.default_act()

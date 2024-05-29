@@ -129,8 +129,8 @@ def test_controllers_theta_estimation(K, d, T, N, lbda, alpha, seed):
     for i, l in enumerate(true_labels):
         true_agent_labels[f"agent_{i}"] = l
 
-    thetas = [rng.randn(d, 1) for _ in range(n_thetas)]
-    arms = [rng.randn(d, 1) for _ in range(K)]
+    thetas = [rng.normal(size=(d, 1)) for _ in range(n_thetas)]
+    arms = [rng.normal(size=(d, 1)) for _ in range(K)]
 
     env_instance = env.ClusteredGaussianLinearBandit(
         d=d,
@@ -193,7 +193,7 @@ def test_controllers_theta_estimation(K, d, T, N, lbda, alpha, seed):
         # We propose simple tests on the estimation process
 
         for controller_instance, env_instance in results:
-            # the controller's method .act() is called T - 1
+            # the controller's method .act() is called T time
             T_controller = controller_instance.t
             assert T_controller == (T - 1)
 

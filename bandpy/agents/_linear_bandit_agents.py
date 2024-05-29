@@ -56,7 +56,7 @@ class LinUniform(MultiLinearAgentsBase):
     def act(self, t):
         """Select an arm."""
         if self.arms.return_arm_index:
-            return self.rng.randint(self.K)
+            return self.rng.integers(low=0, high=self.K)
 
         else:
             random_arm = []

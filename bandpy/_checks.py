@@ -54,13 +54,13 @@ def check_random_state(seed):
     random_instance : random-instance used to initialize the analysis
     """
     if seed is None or seed is np.random:
-        return np.random.mtrand._rand
+        return np.random.default_rng(seed=None)
     if isinstance(seed, (int, np.integer)):
-        return np.random.RandomState(seed)
-    if isinstance(seed, np.random.RandomState):
+        return np.random.default_rng(seed=seed)
+    if isinstance(seed, np.random.Generator):
         return seed
     raise ValueError(
-        f"{seed} cannot be used to seed a " f"numpy.random.RandomState instance"
+        f"{seed} cannot be used to seed a " f"numpy.random.Generator instance"
     )
 
 
@@ -165,7 +165,7 @@ def check_thetas_and_n_thetas(
 
     elif (n_thetas is not None) and (thetas is None):
         rng = check_random_state(seed)
-        thetas = [rng.randn(d, 1) + theta_offset for _ in range(n_thetas)]
+        thetas = [rng.normal(size=(d, 1)) + theta_offset for _ in range(n_thetas)]
 
     elif (n_thetas is None) and (thetas is None):
         raise ValueError(
@@ -239,7 +239,7 @@ def check_K_arms_arm_entries(d, arms=None, arm_entries=None, K=None, seed=None):
 
     if (arms is None) and (K is not None) and (arm_entries is None):
         rng = check_random_state(seed)
-        arms = [rng.randn(d, 1) for _ in range(K)]
+        arms = [rng.normal(size=(d, 1)) for _ in range(K)]
         arm_entries = None
         K = K
         return_arm_index = True

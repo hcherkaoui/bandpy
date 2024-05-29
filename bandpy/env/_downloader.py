@@ -13,7 +13,7 @@ except ImportError:
 HOME_DIR = os.path.expanduser("~")
 DEFAULT_DATADIR = os.path.join(HOME_DIR, "bandpy_data")
 
-MOVIELENS_URL = "https://files.grouplens.org/datasets/movielens/" "ml-latest-small.zip"
+MOVIELENS_URL = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
 YAHOO_URL = "https://webscope.sandbox.yahoo.com/catalog.php?datatype=c"
 
 

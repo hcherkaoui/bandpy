@@ -25,11 +25,11 @@ def test_cholesky_rank_one_update(n, d, seed):
 
     m = 10
     lbda = 1.0
-    X = rng.randn(d, m)
+    X = rng.normal(size=(d, m))
     A = lbda * np.eye(d) + X @ X.T
     L_test = np.linalg.cholesky(A)
 
-    for x in [rng.randn(d, 1) for _ in range(n)]:
+    for x in [rng.normal(size=(d, 1)) for _ in range(n)]:
         A += x @ x.T
 
         L_ref = np.linalg.cholesky(A)
@@ -49,7 +49,7 @@ def test_sherman_morrison(n, d, seed):
     A = lbda * np.eye(d)
     inv_A_test = np.linalg.inv(A)
 
-    for x in [rng.randn(d, 1) for _ in range(n)]:
+    for x in [rng.normal(size=(d, 1)) for _ in range(n)]:
         A += x @ x.T
 
         inv_A_ref = np.linalg.inv(A)
@@ -67,11 +67,11 @@ def test_det_rank_one_update(n, d, seed):
 
     m = 10
     lbda = 1.0
-    X = rng.randn(d, m)
+    X = rng.normal(size=(d, m))
     A = lbda * np.eye(d) + X @ X.T
     det_A_test = np.linalg.det(A)
 
-    for x in [rng.randn(d, 1) for _ in range(n)]:
+    for x in [rng.normal(size=(d, 1)) for _ in range(n)]:
         inv_A = np.linalg.inv(A)
         A += x @ x.T
 
@@ -98,18 +98,18 @@ def test_K_f(N, K, d, T, lbda, seed):
     rng = check_random_state(seed)
 
     A_init = lbda * np.eye(d)
-    X = [rng.randn(d, 1) for _ in range(K)]
+    X = [rng.normal(size=(d, 1)) for _ in range(K)]
 
     net = dict()
     for i in range(N):
         A = np.copy(A_init)
         inv_A = np.linalg.inv(A_init)
         cho_A = np.linalg.cholesky(A_init)
-        theta = rng.randn(d, 1)
+        theta = rng.normal(size=(d, 1))
         net[i] = dict(A=A, inv_A=inv_A, cho_A=cho_A, theta=theta)
 
     for _ in range(T):
-        i = rng.randint(N)
+        i = rng.integers(low=0, high=N)
         k = rng.choice(K)
         x = X[k]
 
@@ -140,7 +140,7 @@ def test_sign_K_min(d, seed):
     inv_A_i = np.eye(d)
     cho_A_j = np.eye(d)
 
-    theta = rng.randn(d, 1)
+    theta = rng.normal(size=(d, 1))
     theta_i = theta
     theta_j = theta
     _, f_min = K_min(inv_A_i, cho_A_j, theta_i, theta_j)
@@ -152,7 +152,7 @@ def test_sign_K_min(d, seed):
     _, f_min = K_min(inv_A_i, cho_A_j, theta_i, theta_j)
     assert f_min > 0.0
 
-    theta = rng.randn(d, 1)
+    theta = rng.normal(size=(d, 1))
     theta_i = theta
     theta_j = 10.0 * theta
     _, f_min = K_min(inv_A_i, cho_A_j, theta_i, theta_j)
@@ -183,18 +183,18 @@ def test_K_min(N, K, d, T, lbda, seed):
 
     rng = check_random_state(seed)
     A_init = lbda * np.eye(d)
-    X = [rng.randn(d, 1) for _ in range(K)]
+    X = [rng.normal(size=(d, 1)) for _ in range(K)]
 
     net = dict()
     for i in range(N):
         A = np.copy(A_init)
         inv_A = np.linalg.inv(A_init)
         cho_A = np.linalg.cholesky(A_init)
-        theta = rng.randn(d, 1)
+        theta = rng.normal(size=(d, 1))
         net[i] = dict(A=A, inv_A=inv_A, cho_A=cho_A, theta=theta)
 
     for t in range(T):
-        i = rng.randint(N)
+        i = rng.integers(low=0, high=N)
         k = rng.choice(K)
         x = X[k]
 

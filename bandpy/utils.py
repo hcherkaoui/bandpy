@@ -70,8 +70,8 @@ def generate_thetas_arms_1(K, d, n_thetas=2, offset=0.0, seed=None):
     """Generate a set of thetas and arms."""
     rng = check_random_state(seed)
 
-    thetas = [rng.randn(d, 1) + offset for _ in range(n_thetas)]
-    arms = [rng.randn(d, 1) for _ in range(K)]
+    thetas = [rng.normal(size=(d, 1)) + offset for _ in range(n_thetas)]
+    arms = [rng.normal(size=(d, 1)) for _ in range(K)]
 
     return thetas, arms
 
@@ -87,15 +87,15 @@ def generate_thetas_arms_2(
         np.array([np.cos(angle), np.sin(angle)] + [0.0] * (d - 2)).reshape((d, 1)),
     ]
 
-    arms = [np.array([1.0, 0.0, np.sin(tiny_angle)] + list(rng.randn(d - 3)))]
+    arms = [np.array([1.0, 0.0, np.sin(tiny_angle)] + list(rng.normal(size=(d - 3))))]
     arms += [
         np.array(
-            [np.cos(angle), np.sin(angle), np.sin(tiny_angle)] + list(rng.randn(d - 3))
+            [np.cos(angle), np.sin(angle), np.sin(tiny_angle)] + list(rng.normal(size=(d - 3)))
         )
     ]
     arms += [0.5 * (arms[-2] + arms[-1])]
     arms += [-arms[-1]]
-    arms += [np.array([0.0, 0.0, 0.0] + list(rng.randn(d - 3))) for _ in range(K - 4)]
+    arms += [np.array([0.0, 0.0, 0.0] + list(rng.normal(size=(d - 3)))) for _ in range(K - 4)]
 
     return thetas, arms
 
@@ -130,7 +130,7 @@ def generate_thetas_arms_3(
         norm_theta = np.linalg.norm(theta)
         arms.extend(
             [
-                theta + coef * norm_theta * rng.randn(*theta.shape)
+                theta + coef * norm_theta * rng.normal(size=theta.shape)
                 for _ in range(int(K / n_thetas))
             ]
         )
@@ -248,7 +248,7 @@ def proj_on_arm_entries(x, arm_entries):
 
 def _generate_list_of_nd_array(n, d, offset=0.0, seed=None):
     rng = check_random_state(seed)
-    return [rng.randn(d, 1) + offset for _ in range(n)]
+    return [rng.normal(size=(d, 1)) + offset for _ in range(n)]
 
 
 def generate_gaussian_arms(K, d, seed=None):  # pragma: no cover
@@ -266,7 +266,7 @@ def generate_gaussian_arm_entries(n_vals_per_dim, d, seed=None):
     rng = check_random_state(seed)
     arm_entries = dict()
     for i in range(d):
-        arm_entries[f"p_{i}"] = np.sort(rng.randn(n_vals_per_dim))
+        arm_entries[f"p_{i}"] = np.sort(rng.normal(size=(n_vals_per_dim, 1)))
     return arm_entries
 
 
@@ -278,8 +278,8 @@ def pytest_set_up(d=2, seed=None):
     set_up["seed"] = seed
     set_up["rng"] = rng
     set_up["inv_A"] = np.eye(d)
-    set_up["x_k"] = rng.randn(d, 1)
-    set_up["theta"] = rng.randn(d, 1)
+    set_up["x_k"] = rng.normal(size=(d, 1))
+    set_up["theta"] = rng.normal(size=(d, 1))
     set_up["alpha"] = 1.0
     set_up["t"] = 1
     set_up["lbda"] = 1.0

@@ -183,7 +183,7 @@ class ClusteredGaussianLinearBandit(BanditEnvBase):
         theta = self.thetas[self.theta_per_agent[agent_name]]
 
         no_noise_y = float(x_k.T.dot(theta))
-        noise = float(self.sigma * self.rng.randn())
+        noise = float(self.sigma * self.rng.normal())
 
         return noise + no_noise_y, no_noise_y
 
@@ -272,7 +272,7 @@ class GaussianLinearBanditWithState(ClusteredGaussianLinearBandit):
 
         no_noise_y = float(x_k.T.dot(theta))
         state = self.current_state
-        noise = float(self.sigma * self.rng.randn())
+        noise = float(self.sigma * self.rng.normal())
 
         return noise + state + no_noise_y, no_noise_y
 
@@ -341,7 +341,7 @@ class DatasetEnv(BanditEnvBase):  # pragma: no cover
         id_ = self.agent_i_to_env_agent_i[agent_name]
 
         no_noise_y = self.get_no_noise_y(id_, k)
-        noise = float(self.sigma * self.rng.randn())
+        noise = float(self.sigma * self.rng.normal())
 
         return noise + no_noise_y, no_noise_y
 

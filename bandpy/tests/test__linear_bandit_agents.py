@@ -20,7 +20,7 @@ def test_LinUniform(d, K, seed):
     rng = set_up["rng"]
     lbda = set_up["lbda"]
 
-    arms = [rng.randn(d) for _ in range(K)]
+    arms = [rng.normal(size=d) for _ in range(K)]
 
     agent_ = agents.LinUniform(arms=arms, arm_entries=None, lbda=lbda, seed=seed)
 

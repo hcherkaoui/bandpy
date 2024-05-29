@@ -3,7 +3,7 @@
 # Authors: Hamza Cherkaoui <hamza.cherkaoui@huawei.com>
 
 import numpy as np
-from ..utils import check_random_state
+from .._checks import check_random_state
 
 
 class ControllerBase:
@@ -45,10 +45,17 @@ class ControllerBase:
 
         self.done = False
 
+    def reset(self, seed=None):
+        """Reset internal statistics."""
+        self.seed = seed
+        self.rng = check_random_state(self.seed)
+        # self.init_metrics()
+        self.t = -1
+
     def _choose_agent(self):
         """Randomly return the name of an agent."""
         if self.agent_selection_type == "random":
-            i = self.rng.randint(self.N)
+            i = self.rng.integers(self.N)
 
         elif self.agent_selection_type == "iterative":
             i = self.t % self.N

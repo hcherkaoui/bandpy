@@ -20,7 +20,7 @@ def labels_to_A(labels):
     A = np.zeros((len(labels), len(labels)), dtype=int)
     for i, j in itertools.combinations(range(len(labels)), 2):
         if labels[i] == labels[j]:
-                A[i, j]= 1
+            A[i, j] = 1
     return A
 
 
@@ -83,7 +83,6 @@ class ClusteringController(ControllerBase):
             self.l_graph_A_or_graph_score.append(f1_score)
         else:
             self.l_graph_A_or_graph_score.append(graph_A)
-
 
     def _check_if_controller_done(self):
         """Check if the controller return 'done'."""
@@ -213,14 +212,14 @@ class OracleClustering(ClusteringController):
     label."""
 
     def __init__(self,
-                agent_labels,
-                agent_cls,
-                agent_kwargs,
-                N=None,
-                agent_names=None,
-                true_graph=None,
-                seed=None,
-                ):
+                 agent_labels,
+                 agent_cls,
+                 agent_kwargs,
+                 N=None,
+                 agent_names=None,
+                 true_graph=None,
+                 seed=None,
+                 ):
         """Init."""
         N, agent_names = check_N_and_agent_names(N, agent_names)
         self.agent_labels = agent_labels
@@ -398,6 +397,7 @@ class LBC(AbstractCLUB):
         delta=1e-3,
         alpha=1.0,
         lbda=1.0,
+        eps_greedy=None,
         N=None,
         agent_names=None,
         true_graph=None,
@@ -410,6 +410,9 @@ class LBC(AbstractCLUB):
         self.d = len(self.arms[0])
         self.A_init = check_A_init(self.d, lbda, A_init)
         N, agent_names = check_N_and_agent_names(N, agent_names)
+
+        # Greedy parameter
+        self.eps_greedy = eps_greedy
 
         # LBC related parameters
         self.delta = delta
@@ -508,8 +511,12 @@ class LBC(AbstractCLUB):
 
         agent_name = self._choose_agent()
 
-        _, _, inv_A, theta = self._get_neighbors_shared_parameters(agent_name)
-        k = self._pull_arm_ucb(t, inv_A, theta)
+        if (self.eps_greedy is not None) and (self.rng.uniform() < self.eps_greedy):
+            k = self.rng.integers(low=0, high=len(self.arms))
+
+        else:
+            _, _, inv_A, theta = self._get_neighbors_shared_parameters(agent_name)
+            k = self._pull_arm_ucb(t, inv_A, theta)
 
         self._check_if_controller_done()
 
@@ -587,12 +594,19 @@ class DynUCB:
         """Init cluster labels."""
         agent_labels = dict()
         for i in np.arange(self.N):
-            agent_labels[f"agent_{i}"] = self.rng.randint(self.n_clusters)
+            agent_labels[f"agent_{i}"] = self.rng.integers(self.n_clusters)
         comps = dict()
         for m in range(self.n_clusters):
             labels = [i for i in np.arange(self.N) if agent_labels[f"agent_{i}"] == m]
             comps[m] = labels
         return agent_labels, comps
+
+    def reset(self, seed=None):
+        """Reset internal statistics."""
+        self.seed = seed
+        self.rng = check_random_state(self.seed)
+        # self.init_metrics()
+        self.t = -1
 
     def _get_cluster_shared_parameters(self, cluster_idx):
         """Get the parameters of 'cluster_idx'."""
@@ -633,7 +647,7 @@ class DynUCB:
     def _choose_agent(self):
         """Randomly return the name of an agent."""
         if self.agent_selection_type == "random":
-            i = self.rng.randint(self.N)
+            i = self.rng.integers(self.N)
 
         elif self.agent_selection_type == "iterative":
             i = self.t % self.N
@@ -714,29 +728,15 @@ class DynUCB:
 
             # update old agent cluster
             self.comps[old_agent_label].remove(agent_idx)
-            (
-                A_cluster,
-                b_cluster,
-                inv_A_cluster,
-                theta_cluster,
-            ) = self._get_cluster_shared_parameters(old_agent_label)
-            self._update_shared_parameters(
-                old_agent_label, A_cluster, b_cluster, inv_A_cluster, theta_cluster
-            )
+            A_cluster, b_cluster, inv_A_cluster, theta_cluster = self._get_cluster_shared_parameters(old_agent_label)
+            self._update_shared_parameters(old_agent_label, A_cluster, b_cluster, inv_A_cluster, theta_cluster)
             self.cluster_thetas[old_agent_label] = theta_cluster
             self.cluster_inv_A[old_agent_label] = inv_A_cluster
 
             # update new agent cluster
             self.comps[agent_label].append(agent_idx)
-            (
-                A_cluster,
-                b_cluster,
-                inv_A_cluster,
-                theta_cluster,
-            ) = self._get_cluster_shared_parameters(agent_label)
-            self._update_shared_parameters(
-                agent_label, A_cluster, b_cluster, inv_A_cluster, theta_cluster
-            )
+            A_cluster, b_cluster, inv_A_cluster, theta_cluster = self._get_cluster_shared_parameters(agent_label)
+            self._update_shared_parameters(agent_label, A_cluster, b_cluster, inv_A_cluster, theta_cluster)
 
             self.cluster_thetas[agent_label] = theta_cluster
             self.cluster_inv_A[agent_label] = inv_A_cluster
